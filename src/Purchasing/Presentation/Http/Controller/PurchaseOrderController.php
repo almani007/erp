@@ -37,7 +37,7 @@ final class PurchaseOrderController
     public function show(string $orderId, BranchContext $branches): JsonResponse
     {
         return new JsonResponse(['data' => $this->find($orderId, $branches)->load([
-            'items.product:id,sku,name', 'supplier:id,name,supplier_code', 'receipts:id,purchase_order_id,grn_no,grand_total,received_at,supplier_invoice_no',
+            'items.product:id,sku,name,track_batch,track_expiry', 'supplier:id,name,supplier_code', 'receipts:id,purchase_order_id,grn_no,grand_total,received_at,supplier_invoice_no',
         ])]);
     }
 
@@ -83,6 +83,8 @@ final class PurchaseOrderController
             'lines' => ['required', 'array', 'min:1', 'max:500'],
             'lines.*.purchase_order_item_id' => ['required', 'uuid', 'distinct'],
             'lines.*.quantity' => ['required', 'numeric', 'gt:0', 'decimal:0,6'],
+            'lines.*.batch_no' => ['nullable', 'string', 'max:60'],
+            'lines.*.expiry_date' => ['nullable', 'date_format:Y-m-d', 'after:today'],
         ]);
 
         $receipt = $action->execute($this->find($orderId, $branches)->id, $data['lines'], $data['supplier_invoice_no'] ?? null, $request->user()->id);

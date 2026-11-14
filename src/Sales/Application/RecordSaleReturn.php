@@ -101,6 +101,10 @@ final class RecordSaleReturn
                 }
 
                 if (Decimal::cmp($qty, $eligible) === 0) {
+                    // The whole line is now back: release its serial numbers. (A partial
+                    // return does not say which unit came back, so its serials stay recorded.)
+                    DB::table('sold_serials')->where('sale_item_id', $item->id)->delete();
+
                     // Returning all that is left refunds exactly the remainder, so
                     // several partial returns can never add up to more than was paid.
                     $lineNet = Decimal::sub((string) $item->net_amount, (string) ($prior->net ?? '0'), 2);
@@ -122,6 +126,7 @@ final class RecordSaleReturn
                     $this->stock->receive(new StockPosting(
                         $sale->company_id, $sale->warehouse_id, $item->product_id, $baseQty,
                         MovementType::SaleReturn, 'sales_return', $return->id,
+                        lotsFromSourceType: 'sale', lotsFromSourceId: $sale->id, // back into the batch it was sold from
                     ), (string) $item->cost_snapshot);
                     $cost = Decimal::add($cost, Decimal::mul($baseQty, (string) $item->cost_snapshot, 2));
                 }

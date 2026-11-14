@@ -5,6 +5,7 @@ import Popup from 'devextreme-react/popup';
 import TagBox from 'devextreme-react/tag-box';
 import { Column, Lookup, RequiredRule } from 'devextreme-react/data-grid';
 import CrudGrid from '../components/CrudGrid';
+import { customColumns, useCustomFields } from '../components/CustomColumns';
 import Page from '../components/Page';
 import { api, getList, notifyError, notifySuccess } from '../lib/api';
 import { useAppConfig } from '../lib/config';
@@ -27,6 +28,7 @@ export default function ProductsPage() {
     const categories = useQuery({ queryKey: ['categories'], queryFn: () => getList('/categories') });
     const taxCodes = useQuery({ queryKey: ['tax-codes'], queryFn: () => getList('/tax-codes') });
     const rates = useQuery({ queryKey: ['market-rates'], queryFn: () => getList('/market-rates'), enabled: features.rates });
+    const customFields = useCustomFields('product');
     const [packsFor, setPacksFor] = useState<any | null>(null);
     const [variantsFor, setVariantsFor] = useState<any | null>(null);
     const [version, setVersion] = useState(0);
@@ -79,6 +81,11 @@ export default function ProductsPage() {
                 {features.rates && <Column dataField="purity" width={100} visible={false} />}
                 {features.rates && <Column {...numberColumn('wastage_percent')} caption="Wastage %" visible={false} />}
                 {features.rates && <Column {...numberColumn('making_charge')} caption="Making charge" visible={false} />}
+                {features.expiry && <Column dataField="track_batch" caption="Batch tracked" dataType="boolean" width={120} />}
+                {features.expiry && <Column dataField="track_expiry" caption="Expiry tracked" dataType="boolean" width={125} />}
+                {features.serials && <Column dataField="track_serial" caption="Serial / IMEI" dataType="boolean" width={115} />}
+                {features.serials && <Column dataField="warranty_months" caption="Warranty (months)" dataType="number" width={150} />}
+                {customColumns(customFields)}
                 <Column {...numberColumn('reorder_level', 0)} caption="Reorder at" />
                 <Column dataField="status" width={120}>
                     <Lookup dataSource={STATUSES} />

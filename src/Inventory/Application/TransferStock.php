@@ -93,6 +93,7 @@ final class TransferStock
                 $this->ledger->receive(new StockPosting(
                     $transfer->company_id, $transfer->destination_warehouse_id, $line->product_id, (string) $line->quantity,
                     MovementType::TransferIn, 'stock_transfer', $transfer->id,
+                    lotsFromSourceType: 'stock_transfer', lotsFromSourceId: $transfer->id, // batches travel with the goods
                 ), (string) $line->unit_cost);
             }
 

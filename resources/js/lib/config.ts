@@ -1,15 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getOne } from './api';
 
-export const BUSINESS_TYPES = [
-    { id: 'general', name: 'General / mixed (show everything)' },
-    { id: 'grocery', name: 'Grocery & supermarket' },
-    { id: 'garments', name: 'Garments & footwear' },
-    { id: 'jewellery', name: 'Gold & jewellery' },
-    { id: 'bartan', name: 'Bartan / crockery / utensils' },
-    { id: 'wholesale', name: 'Wholesale & distribution' },
-];
-
 export interface Features {
     /** Wholesale price, minimum quantity and customer price tier. */
     wholesale: boolean;
@@ -19,32 +10,59 @@ export interface Features {
     variants: boolean;
     /** Prices from a daily market rate: gold, silver, steel by weight. */
     rates: boolean;
+    /** Batch numbers and expiry dates, sold first-expiry-first-out. */
+    expiry: boolean;
+    /** Serial / IMEI per unit sold, with warranty. */
+    serials: boolean;
 }
 
-const BY_TYPE: Record<string, Features> = {
-    general: { wholesale: true, packs: true, variants: true, rates: true },
-    grocery: { wholesale: true, packs: true, variants: false, rates: false },
-    garments: { wholesale: true, packs: true, variants: true, rates: false },
-    jewellery: { wholesale: false, packs: false, variants: false, rates: true },
-    bartan: { wholesale: true, packs: true, variants: false, rates: true },
-    wholesale: { wholesale: true, packs: true, variants: false, rates: false },
-};
+export const FEATURE_LABELS: { key: keyof Features; label: string }[] = [
+    { key: 'wholesale', label: 'Wholesale prices, minimum quantities and wholesale customers' },
+    { key: 'packs', label: 'Selling in packs — carton, dozen, set' },
+    { key: 'variants', label: 'Size / colour variants of a style' },
+    { key: 'rates', label: 'Prices from a daily market rate — gold, silver, steel by weight' },
+    { key: 'expiry', label: 'Batch numbers and expiry dates — medicines, food, cosmetics' },
+    { key: 'serials', label: 'Serial / IMEI numbers and warranty — phones, electronics, tools' },
+];
+
+const all = (on: boolean): Features => ({ wholesale: on, packs: on, variants: on, rates: on, expiry: on, serials: on });
+
+/** Starting points. Every switch can still be turned on or off individually. */
+export const BUSINESS_TYPES: { id: string; name: string; features: Features }[] = [
+    { id: 'general', name: 'General / mixed (everything on)', features: all(true) },
+    { id: 'grocery', name: 'Grocery & supermarket', features: { ...all(false), wholesale: true, packs: true, expiry: true } },
+    { id: 'pharmacy', name: 'Pharmacy & medical store', features: { ...all(false), packs: true, expiry: true } },
+    { id: 'garments', name: 'Garments, footwear & fabric', features: { ...all(false), wholesale: true, packs: true, variants: true } },
+    { id: 'jewellery', name: 'Gold & jewellery', features: { ...all(false), rates: true, serials: true } },
+    { id: 'bartan', name: 'Bartan, crockery & utensils', features: { ...all(false), wholesale: true, packs: true, rates: true } },
+    { id: 'electronics', name: 'Electronics & mobile phones', features: { ...all(false), wholesale: true, serials: true } },
+    { id: 'hardware', name: 'Hardware, sanitary & building material', features: { ...all(false), wholesale: true, packs: true, rates: true } },
+    { id: 'cosmetics', name: 'Cosmetics & general store', features: { ...all(false), wholesale: true, variants: true, expiry: true } },
+    { id: 'wholesale', name: 'Wholesale & distribution', features: { ...all(false), wholesale: true, packs: true, expiry: true } },
+    { id: 'services', name: 'Services (salon, repair, consultancy)', features: all(false) },
+];
 
 export interface AppConfig {
     business_type: string;
+    /** Individual switches that override the business type's defaults. */
+    features: Partial<Features>;
     loyalty: { earn_per_amount: string; point_value: string; enabled: boolean };
 }
 
+export function presetFeatures(type: string | undefined): Features {
+    return (BUSINESS_TYPES.find((t) => t.id === type) ?? BUSINESS_TYPES[0]).features;
+}
+
 /**
- * What this business uses. The business type only decides which fields and
- * screens are shown — every feature keeps working on the server whatever it is.
+ * What this business uses. These switches only decide which fields and
+ * screens are shown — the server behaves the same whatever they are.
  */
 export function useAppConfig(): { config: AppConfig | undefined; features: Features; refetch: () => void } {
     const query = useQuery({ queryKey: ['app-config'], queryFn: () => getOne<AppConfig>('/app-config'), staleTime: 5 * 60_000 });
 
     return {
         config: query.data,
-        features: BY_TYPE[query.data?.business_type ?? 'general'] ?? BY_TYPE.general,
+        features: { ...presetFeatures(query.data?.business_type), ...(query.data?.features ?? {}) },
         refetch: () => { query.refetch(); },
     };
 }

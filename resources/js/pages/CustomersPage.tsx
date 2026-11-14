@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Button from 'devextreme-react/button';
 import { Column, Lookup, RequiredRule } from 'devextreme-react/data-grid';
 import CrudGrid from '../components/CrudGrid';
+import { customColumns, useCustomFields } from '../components/CustomColumns';
 import PaymentPopup from '../components/PaymentPopup';
 import Page from '../components/Page';
 import { useAppConfig } from '../lib/config';
@@ -13,6 +14,7 @@ export default function CustomersPage() {
     const canReceive = useCan('sales.payment.receive');
     const companyId = useCompanyId();
     const { features } = useAppConfig();
+    const customFields = useCustomFields('customer');
     const [selected, setSelected] = useState<string | null>(null);
     const [version, setVersion] = useState(0);
 
@@ -32,6 +34,7 @@ export default function CustomersPage() {
                 <Column {...numberColumn('credit_limit')} caption="Credit limit" />
                 <Column dataField="loyalty_points" caption="Points" dataType="number" width={100} allowEditing={false} />
                 <Column {...numberColumn('balance')} allowEditing={false} />
+                {customColumns(customFields)}
                 <Column dataField="status" width={120}><Lookup dataSource={['active', 'inactive']} /></Column>
                 <Column
                     caption="" width={130} allowSorting={false} allowFiltering={false} allowEditing={false} allowExporting={false}

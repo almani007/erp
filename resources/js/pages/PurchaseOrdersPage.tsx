@@ -123,6 +123,7 @@ function OrderDetail({ orderId, onClose }: { orderId: string; onClose: (changed:
     const canCancel = useCan('purchasing.order.create');
     const order = useQuery({ queryKey: ['purchase-order', orderId], queryFn: () => getOne(`/purchase-orders/${orderId}`) });
     const [receiving, setReceiving] = useState<Record<string, number>>({});
+    const [batches, setBatches] = useState<Record<string, { batch_no?: string; expiry_date?: string | null }>>({});
     const [invoiceNo, setInvoiceNo] = useState('');
     const [busy, setBusy] = useState(false);
     const [changed, setChanged] = useState(false);
@@ -136,6 +137,7 @@ function OrderDetail({ orderId, onClose }: { orderId: string; onClose: (changed:
             notifySuccess(message);
             setChanged(true);
             setReceiving({});
+            setBatches({});
             setInvoiceNo('');
             key.current = newIdempotencyKey();
             await order.refetch();
@@ -149,7 +151,8 @@ function OrderDetail({ orderId, onClose }: { orderId: string; onClose: (changed:
     const approve = () => run(() => api.post(`/purchase-orders/${orderId}/approve`), 'Purchase order approved');
     const cancel = () => run(() => api.post(`/purchase-orders/${orderId}/cancel`, { reason: 'Cancelled from the purchase order screen' }), 'Purchase order cancelled');
     const receive = () => {
-        const lines = Object.entries(receiving).filter(([, q]) => q > 0).map(([purchase_order_item_id, quantity]) => ({ purchase_order_item_id, quantity }));
+        const lines = Object.entries(receiving).filter(([, q]) => q > 0)
+            .map(([purchase_order_item_id, quantity]) => ({ purchase_order_item_id, quantity, ...(batches[purchase_order_item_id] ?? {}) }));
         if (lines.length === 0) {
             notifyError(new Error('Enter the quantity received on at least one line.'));
             return;
@@ -196,6 +199,15 @@ function OrderDetail({ orderId, onClose }: { orderId: string; onClose: (changed:
                                                 value={receiving[item.id] ?? 0} min={0} max={remaining(item)} disabled={remaining(item) <= 0}
                                                 onValueChanged={(e) => setReceiving((r) => ({ ...r, [item.id]: e.value ?? 0 }))}
                                             />
+                                            {(item.product?.track_batch || item.product?.track_expiry) && remaining(item) > 0 && (
+                                                <div style={{ display: 'grid', gap: 4, marginTop: 4 }}>
+                                                    <TextBox placeholder="Batch no." value={batches[item.id]?.batch_no ?? ''}
+                                                        onValueChanged={(e) => setBatches((b) => ({ ...b, [item.id]: { ...b[item.id], batch_no: e.value } }))} />
+                                                    <DateBox type="date" placeholder={item.product?.track_expiry ? 'Expiry (required)' : 'Expiry'} dateSerializationFormat="yyyy-MM-dd"
+                                                        value={batches[item.id]?.expiry_date ?? null}
+                                                        onValueChanged={(e) => setBatches((b) => ({ ...b, [item.id]: { ...b[item.id], expiry_date: e.value } }))} />
+                                                </div>
+                                            )}
                                         </td>
                                     )}
                                 </tr>

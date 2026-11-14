@@ -28,10 +28,14 @@ final class SupplierController
         $supplier = DB::transaction(function () use ($data, $numbers, $tenant): Supplier {
             $tenantId = $tenant->requireId();
 
-            return Supplier::query()->create($data + [
+            $supplier = new Supplier(array_diff_key($data, ['custom' => true]) + [
                 'supplier_code' => $numbers->next($tenantId, 'supplier', $tenantId, 'SUP'),
                 'status' => 'active',
             ]);
+            $supplier->mergeCustom($data['custom'] ?? null);
+            $supplier->save();
+
+            return $supplier;
         });
 
         return new JsonResponse(['data' => $supplier->fresh()], 201);
@@ -40,10 +44,14 @@ final class SupplierController
     public function update(Request $request, string $supplierId): JsonResponse
     {
         $supplier = Supplier::findOrFail($supplierId);
-        $supplier->update($request->validate($this->rules() + [
+        $data = $request->validate($this->rules() + [
             'name' => ['sometimes', 'string', 'max:150'],
             'status' => ['sometimes', 'in:active,inactive'],
-        ]));
+        ]);
+
+        $supplier->fill(array_diff_key($data, ['custom' => true]));
+        $supplier->mergeCustom($data['custom'] ?? null);
+        $supplier->save();
 
         return new JsonResponse(['data' => $supplier->fresh()]);
     }
@@ -81,6 +89,7 @@ final class SupplierController
             'email' => ['nullable', 'email', 'max:150'],
             'tax_no' => ['nullable', 'string', 'max:80'],
             'payment_terms_days' => ['sometimes', 'integer', 'min:0', 'max:365'],
+            ...Supplier::customFieldRules(),
         ];
     }
 }

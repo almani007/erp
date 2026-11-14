@@ -42,10 +42,14 @@ final class CustomerController
         $customer = DB::transaction(function () use ($data, $numbers, $tenant): Customer {
             $tenantId = $tenant->requireId();
 
-            return Customer::query()->create($data + [
+            $customer = new Customer(array_diff_key($data, ['custom' => true]) + [
                 'customer_code' => $numbers->next($tenantId, 'customer', $tenantId, 'CUS'),
                 'status' => 'active',
             ]);
+            $customer->mergeCustom($data['custom'] ?? null);
+            $customer->save();
+
+            return $customer;
         });
 
         return new JsonResponse(['data' => $customer->fresh()], 201);
@@ -61,7 +65,9 @@ final class CustomerController
 
         DB::transaction(function () use ($customer, $data, $audit): void {
             $before = (string) $customer->credit_limit;
-            $customer->update($data);
+            $customer->fill(array_diff_key($data, ['custom' => true]));
+            $customer->mergeCustom($data['custom'] ?? null);
+            $customer->save();
 
             if (isset($data['credit_limit']) && bccomp($before, (string) $data['credit_limit'], 4) !== 0) {
                 $audit->record('sales.customer.credit_limit_changed', 'customer', $customer->id,
@@ -130,6 +136,7 @@ final class CustomerController
             'email' => ['nullable', 'email', 'max:150'],
             'tax_no' => ['nullable', 'string', 'max:80'],
             'credit_limit' => ['sometimes', 'numeric', 'min:0', 'decimal:0,2'],
+            ...Customer::customFieldRules(),
             'price_tier' => ['sometimes', 'in:retail,wholesale'],
         ];
     }

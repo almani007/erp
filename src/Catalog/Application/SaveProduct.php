@@ -15,7 +15,7 @@ final class SaveProduct
         'sku', 'name', 'product_type', 'base_unit_id', 'category_id', 'brand_id', 'tax_code_id',
         'track_batch', 'track_serial', 'track_expiry', 'sale_price', 'cost_price', 'reorder_level',
         'status', 'description', 'wholesale_price', 'wholesale_min_qty', 'pricing_mode', 'rate_code', 'weight',
-        'making_charge', 'wastage_percent', 'purity',
+        'making_charge', 'wastage_percent', 'purity', 'warranty_months',
     ];
 
     /**
@@ -34,6 +34,7 @@ final class SaveProduct
             }
 
             $product->fill($attributes);
+            $product->mergeCustom($data['custom'] ?? null);
 
             if ($product->pricing_mode === 'rate' && empty($product->rate_code)) {
                 throw new \DomainException('Choose the market rate this product is priced from.');

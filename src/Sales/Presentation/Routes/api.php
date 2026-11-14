@@ -36,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('sales', [SaleController::class, 'index'])->middleware('permission:sales.sale.view');
     Route::get('sales/{saleId}', [SaleController::class, 'show'])->middleware('permission:sales.sale.view|sales.sale.create');
     Route::post('sales', [SaleController::class, 'store'])->middleware([$sell, 'idempotent']);
+    Route::get('serials', [SaleController::class, 'serial'])->middleware('permission:sales.sale.view|sales.sale.create');
     Route::get('sales-returns', [SaleController::class, 'returns'])->middleware('permission:sales.sale.view');
     Route::post('sales/{saleId}/returns', [SaleController::class, 'storeReturn'])->middleware(['permission:sales.return.create', 'idempotent']);
     Route::post('sales/{saleId}/void', [SaleController::class, 'void'])->middleware('permission:sales.sale.void');

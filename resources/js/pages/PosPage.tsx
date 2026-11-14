@@ -18,6 +18,10 @@ interface CartLine {
     /** Pack being sold (carton, dozen); null = single units. */
     unit_id: string | null;
     packs: { id: string; name: string; factor: string }[];
+    /** Product needs one serial / IMEI per unit sold. */
+    track_serial: boolean;
+    /** Comma or space separated, as typed or scanned. */
+    serials?: string;
     name: string;
     sku: string;
     quantity: number;
@@ -52,9 +56,12 @@ const METHODS = [
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Lines as the API expects them: price and discount only when the cashier set them. */
-const toLines = (cart: CartLine[]) => cart.map(({ product_id, unit_id, quantity, unit_price, discount }) => ({
+const splitSerials = (text?: string) => (text ?? '').split(/[\s,;]+/).map((v) => v.trim()).filter(Boolean);
+
+const toLines = (cart: CartLine[]) => cart.map(({ product_id, unit_id, quantity, unit_price, discount, track_serial, serials }) => ({
     product_id,
     quantity,
+    ...(track_serial ? { serials: splitSerials(serials) } : {}),
     ...(unit_id ? { unit_id } : {}),
     ...(unit_price !== undefined ? { unit_price } : {}),
     ...(discount ? { discount } : {}),
@@ -186,7 +193,7 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
             if (existing) {
                 return lines.map((l) => (l === existing ? { ...l, quantity: l.quantity + 1 } : l));
             }
-            return [...lines, { key, product_id: product.id, unit_id: unitId, packs: product.units ?? [], name: product.name, sku: product.sku, quantity: 1 }];
+            return [...lines, { key, product_id: product.id, unit_id: unitId, packs: product.units ?? [], track_serial: !!product.track_serial, name: product.name, sku: product.sku, quantity: 1 }];
         });
     }, []);
 
@@ -251,7 +258,8 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
         setDialog(null);
     };
 
-    const canPay = cart.length > 0 && !!quote && !quoteError;
+    const serialsComplete = cart.every((l) => !l.track_serial || splitSerials(l.serials).length === l.quantity);
+    const canPay = cart.length > 0 && !!quote && !quoteError && serialsComplete;
 
     // Keyboard shortcuts for the checkout lane.
     useEffect(() => {
@@ -375,6 +383,16 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
                                             </div>
                                         )}
                                         {q?.promotion_name && <div className="pos-promo">{q.promotion_name} · −{money(q.promotion_discount)}</div>}
+                                        {line.track_serial && (
+                                            <div style={{ marginTop: 4 }}>
+                                                <TextBox
+                                                    placeholder={`Serial / IMEI — ${line.quantity} needed`} value={line.serials ?? ''} valueChangeEvent="change"
+                                                    onValueChanged={(e) => update(line.key, { serials: e.value })}
+                                                    isValid={splitSerials(line.serials).length === line.quantity}
+                                                    validationError={{ message: 'Enter one serial per unit, separated by commas or spaces' }}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="pos-line-total">{q ? money(q.total) : '…'}</div>
                                 </div>

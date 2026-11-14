@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Catalog\Infrastructure\Persistence\Eloquent;
 
 use Shared\Infrastructure\Concern\BelongsToTenant;
+use Shared\Infrastructure\Concern\HasCustomFields;
 use Catalog\Domain\Enum\ProductStatus;
 use Catalog\Domain\Enum\ProductType;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -14,8 +15,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class Product extends Model
 {
-    use HasUuids;
     use BelongsToTenant;
+    use HasCustomFields;
+    use HasUuids;
 
     protected $table = 'products';
     public $incrementing = false;
@@ -46,6 +48,7 @@ final class Product extends Model
         'making_charge',
         'wastage_percent',
         'purity',
+        'warranty_months',
         'reorder_level',
         'status',
         'description',
@@ -62,6 +65,7 @@ final class Product extends Model
             'track_expiry' => 'boolean',
             'metadata' => 'array',
             'variant_attributes' => 'array',
+            'custom' => 'array',
         ];
     }
 

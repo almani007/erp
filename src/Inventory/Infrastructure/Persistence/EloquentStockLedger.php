@@ -18,6 +18,7 @@ final class EloquentStockLedger implements StockLedger
     public function __construct(
         private readonly TenantContext $tenant,
         private readonly AuthFactory $auth,
+        private readonly LotLedger $lots,
     ) {}
 
     public function receive(StockPosting $posting, string $unitCost): string
@@ -42,6 +43,7 @@ final class EloquentStockLedger implements StockLedger
             : Decimal::round($unitCost, Decimal::MONEY_SCALE);
 
         $this->write($posting, $balance->id, $posting->quantity, $unitCost, $newOnHand, $avgCost);
+        $this->lots->receive($posting);
 
         return $unitCost;
     }
@@ -64,6 +66,7 @@ final class EloquentStockLedger implements StockLedger
         $newOnHand = Decimal::sub($onHand, $posting->quantity, Decimal::QTY_SCALE);
 
         $this->write($posting, $balance->id, Decimal::negate($posting->quantity, Decimal::QTY_SCALE), $unitCost, $newOnHand, $unitCost);
+        $this->lots->issue($posting, $onHand);
 
         return $unitCost;
     }

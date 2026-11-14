@@ -99,6 +99,8 @@ final class ProductController
             'making_charge' => ['sometimes', 'numeric', 'min:0'],
             'wastage_percent' => ['sometimes', 'numeric', 'min:0', 'max:100'],
             'purity' => ['nullable', 'string', 'max:30'],
+            'warranty_months' => ['sometimes', 'integer', 'min:0', 'max:240'],
+            ...Product::customFieldRules(),
             'barcodes' => ['sometimes', 'array', 'max:20'],
             'barcodes.*' => ['string', 'max:128'],
         ];

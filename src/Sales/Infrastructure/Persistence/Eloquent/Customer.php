@@ -6,11 +6,13 @@ namespace Sales\Infrastructure\Persistence\Eloquent;
 
 use Illuminate\Database\Eloquent\Model;
 use Shared\Infrastructure\Concern\BelongsToTenant;
+use Shared\Infrastructure\Concern\HasCustomFields;
 use Shared\Infrastructure\Concern\HasUuid;
 
 final class Customer extends Model
 {
     use BelongsToTenant;
+    use HasCustomFields;
     use HasUuid;
 
     protected $table = 'customers';
@@ -19,6 +21,6 @@ final class Customer extends Model
 
     protected function casts(): array
     {
-        return ['loyalty_points' => 'integer'];
+        return ['loyalty_points' => 'integer', 'custom' => 'array'];
     }
 }

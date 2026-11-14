@@ -157,6 +157,45 @@ final class SaleFlowTest extends TestCase
         $this->assertEquals(76, DB::table('stock_balances')->where('product_id', $cola->id)->value('on_hand'));
     }
 
+    public function test_expiry_tracked_stock_is_sold_from_its_batch_and_expired_stock_is_refused(): void
+    {
+        $this->openShift();
+        $medicine = Product::query()->where('sku', 'PHA-PARA-500')->firstOrFail(); // 100 in batch B-0001
+        $lot = fn () => DB::table('stock_lots')->where('product_id', $medicine->id)->where('batch_no', 'B-0001');
+
+        $sell = fn (int $quantity) => $this->postJson('/api/v1/sales', [
+            'lines' => [['product_id' => $medicine->id, 'quantity' => $quantity]],
+            'tenders' => [['method' => 'cash', 'amount' => 1000]],
+        ], ['Idempotency-Key' => (string) Str::uuid()]);
+
+        $sell(5)->assertCreated();
+        $this->assertEquals(95, $lot()->value('quantity'));
+
+        // Once the batch has expired it can no longer be sold.
+        $lot()->update(['expiry_date' => now()->subDay()->toDateString()]);
+        $sell(1)->assertStatus(422);
+        $this->assertEquals(95, $lot()->value('quantity'));
+    }
+
+    public function test_serial_tracked_products_need_one_serial_per_unit_and_can_be_looked_up(): void
+    {
+        $this->openShift();
+        $phone = Product::query()->where('sku', 'ELE-PHONE-A1')->firstOrFail(); // 48,500 + 18%, 12 months warranty
+
+        $sell = fn (array $serials) => $this->postJson('/api/v1/sales', [
+            'lines' => [['product_id' => $phone->id, 'quantity' => 1, 'serials' => $serials]],
+            'tenders' => [['method' => 'card', 'amount' => 57230, 'reference' => 'TEST']],
+        ], ['Idempotency-Key' => (string) Str::uuid()]);
+
+        $sell([])->assertStatus(422);
+        $sell(['imei-0001'])->assertCreated();
+        $sell(['IMEI-0001'])->assertStatus(422); // the same unit cannot be sold twice
+
+        $this->getJson('/api/v1/serials?serial=imei-0001')->assertOk()
+            ->assertJsonPath('data.0.serial', 'IMEI-0001')
+            ->assertJsonPath('data.0.in_warranty', true);
+    }
+
     public function test_posted_journal_lines_cannot_be_changed_or_deleted(): void
     {
         $line = DB::table('journal_lines')->first(); // from the seeded opening stock

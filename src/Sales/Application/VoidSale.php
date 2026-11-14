@@ -63,6 +63,7 @@ final class VoidSale
                         $sale->company_id, $sale->warehouse_id, $item->product_id,
                         Decimal::mul((string) $item->quantity, (string) $item->unit_factor, Decimal::QTY_SCALE), // packs → base units
                         MovementType::SaleVoid, 'sale', $sale->id, 'void: '.$reason,
+                        lotsFromSourceType: 'sale', lotsFromSourceId: $sale->id,
                     ), (string) $item->cost_snapshot);
                 }
             }
@@ -74,6 +75,9 @@ final class VoidSale
                 $customer = Customer::query()->lockForUpdate()->findOrFail($sale->customer_id);
                 $customer->forceFill(['balance' => Decimal::sub((string) $customer->balance, $onCredit)])->save();
             }
+
+            // The units are back on the shelf, so their serials can be sold again.
+            DB::table('sold_serials')->where('sale_id', $sale->id)->delete();
 
             // Give back the points spent and take back the points earned.
             $pointsBack = (int) $sale->points_redeemed - (int) $sale->points_earned;

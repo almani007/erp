@@ -56,6 +56,8 @@ final class ShiftController
     {
         return new JsonResponse(['data' => [
             'business_type' => (string) ($settings->get('business', 'type') ?? 'general'),
+            // Per-feature switches that override the business type's defaults.
+            'features' => (object) ((array) ($settings->get('business', 'features') ?? [])),
             'loyalty' => $loyalty->config(),
         ]]);
     }

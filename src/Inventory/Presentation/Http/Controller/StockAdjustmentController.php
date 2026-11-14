@@ -48,6 +48,8 @@ final class StockAdjustmentController
             'lines.*.product_id' => ['required', 'uuid', 'distinct', TenantRule::exists('products')],
             'lines.*.qty_delta' => ['required', 'numeric', 'not_in:0', 'decimal:0,6'],
             'lines.*.unit_cost' => ['nullable', 'numeric', 'min:0', 'decimal:0,4'],
+            'lines.*.batch_no' => ['nullable', 'string', 'max:60'],
+            'lines.*.expiry_date' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
         $adjustment = $action->execute(

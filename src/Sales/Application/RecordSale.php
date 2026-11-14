@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sales\Application;
 
 use Catalog\Infrastructure\Persistence\Eloquent\Coupon;
+use Catalog\Infrastructure\Persistence\Eloquent\Product;
 use Finance\Application\Dto\JournalDraft;
 use Finance\Application\Dto\JournalLineDraft;
 use Finance\Application\PostingAccounts;
@@ -26,6 +27,7 @@ use Shared\Domain\Contract\DocumentNumbers;
 use Shared\Domain\Contract\EventOutbox;
 use Shared\Domain\Contract\TenantContext;
 use Shared\Domain\Support\Decimal;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * WF-SALE: one database transaction writes the sale, its tenders, the stock
@@ -118,7 +120,7 @@ final class RecordSale
                     $costTotal = Decimal::add($costTotal, Decimal::mul($line['base_quantity'], $unitCost, 2));
                 }
 
-                SaleItem::query()->create([
+                $saleItem = SaleItem::query()->create([
                     'sale_id' => $sale->id,
                     'product_id' => $product->id,
                     'sku' => $product->sku,
@@ -135,6 +137,8 @@ final class RecordSale
                     'unit_name' => $line['unit_name'],
                     'unit_factor' => $line['unit_factor'],
                 ]);
+
+                $this->recordSerials($sale, $saleItem, $product, $line, $customer?->id);
             }
 
             foreach ($tenderRows as $row) {
@@ -176,6 +180,48 @@ final class RecordSale
 
             return $sale->load(['items', 'tenders', 'customer:id,name,customer_code']);
         });
+    }
+
+    /**
+     * Products that track serials (phones, appliances, tools) must have one
+     * serial / IMEI per unit sold; each is recorded with its warranty end date.
+     *
+     * @param  array<string, mixed>  $line  a priced cart line
+     */
+    private function recordSerials(Sale $sale, SaleItem $item, Product $product, array $line, ?string $customerId): void
+    {
+        if (! $product->track_serial) {
+            return;
+        }
+
+        $serials = $line['serials'];
+
+        if (Decimal::cmp((string) count($serials), $line['base_quantity']) !== 0) {
+            throw new \DomainException("{$product->name}: enter one serial number for each unit sold (".count($serials).' entered).');
+        }
+
+        $taken = DB::table('sold_serials')->where('tenant_id', $this->tenant->requireId())
+            ->where('product_id', $product->id)->whereIn('serial', $serials)->pluck('serial')->all();
+
+        if ($taken !== []) {
+            throw new \DomainException("{$product->name}: serial ".implode(', ', $taken).' is already recorded as sold.');
+        }
+
+        $months = (int) $product->warranty_months;
+
+        foreach ($serials as $serial) {
+            DB::table('sold_serials')->insert([
+                'id' => Uuid::v7()->toRfc4122(),
+                'tenant_id' => $this->tenant->requireId(),
+                'product_id' => $product->id,
+                'serial' => $serial,
+                'sale_id' => $sale->id,
+                'sale_item_id' => $item->id,
+                'customer_id' => $customerId,
+                'sold_at' => now(),
+                'warranty_until' => $months > 0 ? now()->addMonths($months)->toDateString() : null,
+            ]);
+        }
     }
 
     /** Count one use of the coupon; the row lock keeps a limited coupon from being over-used. */

@@ -44,7 +44,7 @@ final class ReceiveGoods
         private readonly EventOutbox $outbox,
     ) {}
 
-    /** @param  list<array{purchase_order_item_id: string, quantity: string|int|float}>  $lines */
+    /** @param  list<array{purchase_order_item_id: string, quantity: string|int|float, batch_no?: string|null, expiry_date?: string|null}>  $lines */
     public function execute(string $orderId, array $lines, ?string $supplierInvoiceNo, string $actorId): GoodsReceipt
     {
         return DB::transaction(function () use ($orderId, $lines, $supplierInvoiceNo, $actorId): GoodsReceipt {
@@ -85,6 +85,7 @@ final class ReceiveGoods
                 $this->stock->receive(new StockPosting(
                     $order->company_id, $order->warehouse_id, $item->product_id, $qty,
                     MovementType::PurchaseReceipt, 'goods_receipt', $receipt->id,
+                    batchNo: $line['batch_no'] ?? null, expiryDate: $line['expiry_date'] ?? null,
                 ), (string) $item->unit_cost);
 
                 $net = Decimal::mul($qty, (string) $item->unit_cost, 2);
@@ -98,6 +99,8 @@ final class ReceiveGoods
                     'unit_cost' => $item->unit_cost,
                     'tax_amount' => $lineTax,
                     'line_total' => Decimal::add($net, $lineTax),
+                    'batch_no' => $line['batch_no'] ?? null,
+                    'expiry_date' => $line['expiry_date'] ?? null,
                 ]);
 
                 $item->update(['received_quantity' => Decimal::add((string) $item->received_quantity, $qty, Decimal::QTY_SCALE)]);

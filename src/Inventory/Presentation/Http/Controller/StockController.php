@@ -63,6 +63,33 @@ final class StockController
         return new JsonResponse(['data' => $rows]);
     }
 
+    /**
+     * Batches in stock, soonest expiry first. `within_days` narrows it to
+     * what has expired or will expire within that many days.
+     */
+    public function lots(Request $request, TenantContext $tenant, BranchContext $branches): JsonResponse
+    {
+        $q = $request->validate([
+            'warehouse_id' => ['nullable', 'uuid'],
+            'within_days' => ['nullable', 'integer', 'min:0', 'max:3650'],
+        ]);
+
+        $rows = $this->scoped(DB::table('stock_lots as sl'), 'sl', $tenant, $branches)
+            ->join('products as p', 'p.id', '=', 'sl.product_id')
+            ->where('sl.quantity', '>', 0)
+            ->when($q['warehouse_id'] ?? null, fn (Builder $b, $id) => $b->where('sl.warehouse_id', $id))
+            ->when(isset($q['within_days']), fn (Builder $b) => $b->whereNotNull('sl.expiry_date')
+                ->where('sl.expiry_date', '<=', now()->addDays((int) $q['within_days'])->toDateString()))
+            ->orderByRaw('sl.expiry_date ASC NULLS LAST')
+            ->limit(2000)
+            ->get([
+                'sl.id', 'p.sku', 'p.name as product_name', 'w.name as warehouse_name', 'sl.batch_no', 'sl.expiry_date', 'sl.quantity',
+                DB::raw("CASE WHEN sl.expiry_date IS NULL THEN NULL ELSE (sl.expiry_date - CURRENT_DATE) END AS days_left"),
+            ]);
+
+        return new JsonResponse(['data' => $rows]);
+    }
+
     /** Constrain a raw stock query to the tenant and to branches the user may see. */
     private function scoped(Builder $query, string $alias, TenantContext $tenant, BranchContext $branches): Builder
     {

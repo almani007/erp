@@ -5,6 +5,7 @@ import Popup from 'devextreme-react/popup';
 import SelectBox from 'devextreme-react/select-box';
 import TextBox from 'devextreme-react/text-box';
 import { api, getList, notifyError, notifySuccess } from '../lib/api';
+import { Features, useAppConfig } from '../lib/config';
 import { Branch, useSession } from '../lib/store';
 
 interface NavLink {
@@ -12,6 +13,8 @@ interface NavLink {
     icon: string;
     path: string;
     permission?: string;
+    /** Only shown when this business feature is switched on. */
+    feature?: keyof Features;
 }
 
 const NAV: { section: string; links: NavLink[] }[] = [
@@ -27,6 +30,7 @@ const NAV: { section: string; links: NavLink[] }[] = [
             { text: 'Sales & returns', icon: 'money', path: '/sales', permission: 'sales.sale.view' },
             { text: 'Customers', icon: 'group', path: '/customers', permission: 'sales.customer.view' },
             { text: 'Price checker', icon: 'search', path: '/price-checker', permission: 'catalog.product.view' },
+            { text: 'Serial & warranty', icon: 'tags', path: '/serials', permission: 'sales.sale.view', feature: 'serials' },
         ],
     },
     {
@@ -45,6 +49,7 @@ const NAV: { section: string; links: NavLink[] }[] = [
             { text: 'Adjustments', icon: 'edit', path: '/stock-adjustments', permission: 'inventory.stock.view' },
             { text: 'Transfers', icon: 'movetofolder', path: '/stock-transfers', permission: 'inventory.stock.view' },
             { text: 'Stock counts', icon: 'checklist', path: '/stock-counts', permission: 'inventory.stock.view' },
+            { text: 'Batches & expiry', icon: 'event', path: '/expiry', permission: 'inventory.stock.view', feature: 'expiry' },
         ],
     },
     {
@@ -71,6 +76,7 @@ export default function Layout() {
     const { user, roles, permissions, branches, activeBranchId, setBranches, setActiveBranch, signOut } = useSession();
     const [collapsed, setCollapsed] = useState(() => localStorage.getItem('erp-nav-collapsed') === '1');
     const [passwordOpen, setPasswordOpen] = useState(false);
+    const { features } = useAppConfig();
 
     useEffect(() => {
         getList<Branch>('/branches').then(setBranches).catch(notifyError);
@@ -81,9 +87,11 @@ export default function Layout() {
     }, [collapsed]);
 
     const sections = useMemo(() => {
-        const allowed = (link: NavLink) => !link.permission || permissions.includes('*') || permissions.includes(link.permission);
+        const allowed = (link: NavLink) => (!link.permission || permissions.includes('*') || permissions.includes(link.permission))
+            && (!link.feature || features[link.feature]);
         return NAV.map((s) => ({ ...s, links: s.links.filter(allowed) })).filter((s) => s.links.length > 0);
-    }, [permissions]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [permissions, JSON.stringify(features)]);
 
     const logout = async () => {
         try {

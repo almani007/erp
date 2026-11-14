@@ -9,7 +9,8 @@ import CrudGrid from '../components/CrudGrid';
 import LinesGrid, { cleanLines } from '../components/LinesGrid';
 import Page, { Field } from '../components/Page';
 import { api, getList, idempotent, newIdempotencyKey, notifyError, notifySuccess } from '../lib/api';
-import { numberColumn } from '../lib/format';
+import { useAppConfig } from '../lib/config';
+import { numberColumn, toDateString } from '../lib/format';
 import { useCan } from '../lib/store';
 
 const REASONS = [
@@ -54,9 +55,12 @@ function AdjustmentForm({ onClose }: { onClose: (saved: boolean) => void }) {
     const [busy, setBusy] = useState(false);
     const lines = useRef<any[]>([]);
     const key = useRef(newIdempotencyKey()); // one key per form: a retry cannot post twice
+    const { features } = useAppConfig();
 
     const save = async () => {
-        const payload = cleanLines(lines.current).filter((l) => l.product_id && Number(l.qty_delta));
+        const payload = cleanLines(lines.current).filter((l) => l.product_id && Number(l.qty_delta))
+            // The grid holds dates as Date objects; the API wants YYYY-MM-DD.
+            .map((l) => ({ ...l, expiry_date: l.expiry_date ? toDateString(new Date(l.expiry_date)) : null }));
         if (!warehouseId || payload.length === 0) {
             notifyError(new Error('Choose a warehouse and add at least one line with a quantity.'));
             return;
@@ -97,6 +101,8 @@ function AdjustmentForm({ onClose }: { onClose: (saved: boolean) => void }) {
                 </Column>
                 <Column dataField="qty_delta" caption="Quantity (+/−)" dataType="number" width={160}><RequiredRule /></Column>
                 <Column dataField="unit_cost" caption="Unit cost (increases)" dataType="number" width={180} />
+                {features.expiry && <Column dataField="batch_no" caption="Batch (increases)" width={150} />}
+                {features.expiry && <Column dataField="expiry_date" caption="Expiry" dataType="date" width={140} />}
             </LinesGrid>
             <div className="erp-actions">
                 <Button text="Cancel" onClick={() => onClose(false)} />

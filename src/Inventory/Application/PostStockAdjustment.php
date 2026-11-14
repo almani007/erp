@@ -46,7 +46,7 @@ final class PostStockAdjustment
     ) {}
 
     /**
-     * @param  list<array{product_id: string, qty_delta: string, unit_cost?: string|null}>  $lines
+     * @param  list<array{product_id: string, qty_delta: string, unit_cost?: string|null, batch_no?: string|null, expiry_date?: string|null}>  $lines
      */
     public function execute(Warehouse $warehouse, string $reasonCode, ?string $notes, array $lines): StockAdjustment
     {
@@ -82,6 +82,8 @@ final class PostStockAdjustment
                     sourceType: 'stock_adjustment',
                     sourceId: $adjustment->id,
                     note: $reasonCode,
+                    batchNo: $line['batch_no'] ?? null,
+                    expiryDate: $line['expiry_date'] ?? null,
                 );
 
                 if (Decimal::isPositive($qty)) {

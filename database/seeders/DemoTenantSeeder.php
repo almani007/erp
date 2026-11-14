@@ -25,6 +25,7 @@ use Illuminate\Support\Str;
 use Inventory\Application\PostStockAdjustment;
 use Organization\Infrastructure\Persistence\Eloquent\Branch;
 use Organization\Infrastructure\Persistence\Eloquent\Company;
+use Organization\Infrastructure\Persistence\Eloquent\CustomField;
 use Organization\Infrastructure\Persistence\Eloquent\Tenant;
 use Organization\Infrastructure\Persistence\Eloquent\Warehouse;
 use Purchasing\Infrastructure\Persistence\Eloquent\Supplier;
@@ -119,6 +120,9 @@ final class DemoTenantSeeder extends Seeder
                     'product_id' => $p->id,
                     'qty_delta' => $p->pricing_mode === 'rate' && $p->weight !== null ? '3' : '100', // a few pieces of jewellery, plenty of everything else
                     'unit_cost' => (string) $p->cost_price,
+                    // Expiry-tracked stock needs a batch from day one.
+                    'batch_no' => $p->track_expiry ? 'B-0001' : null,
+                    'expiry_date' => $p->track_expiry ? now()->addMonths(18)->toDateString() : null,
                 ],
                 $products,
             ));
@@ -127,6 +131,10 @@ final class DemoTenantSeeder extends Seeder
             app(Settings::class)->set('loyalty', 'earn_per_amount', '100');
             app(Settings::class)->set('loyalty', 'point_value', '1');
             app(Settings::class)->set('business', 'type', 'general'); // shows every trade's fields
+
+            // A tenant-defined field, to show how records can be extended without code.
+            CustomField::query()->create(['entity' => 'product', 'key' => 'fabric', 'label' => 'Fabric', 'type' => 'select', 'options' => ['Cotton', 'Lawn', 'Linen', 'Silk'], 'status' => 'active']);
+            CustomField::query()->create(['entity' => 'customer', 'key' => 'cnic', 'label' => 'CNIC', 'type' => 'text', 'status' => 'active']);
         });
     }
 
@@ -325,6 +333,20 @@ final class DemoTenantSeeder extends Seeder
                 ]);
             }
         }
+
+        // Pharmacy / food: batch and expiry tracked, sold first-expiry-first-out.
+        $products[] = Product::query()->create([
+            'sku' => 'PHA-PARA-500', 'name' => 'Paracetamol 500mg (strip of 10)', 'product_type' => 'goods', 'base_unit_id' => $units['pk']->id,
+            'category_id' => $categories['Personal Care']->id, 'tax_code_id' => $exempt->id, 'cost_price' => '28', 'sale_price' => '40',
+            'reorder_level' => '50', 'status' => 'active', 'track_batch' => true, 'track_expiry' => true,
+        ]);
+
+        // Electronics / mobile: one serial or IMEI per unit, with a warranty period.
+        $products[] = Product::query()->create([
+            'sku' => 'ELE-PHONE-A1', 'name' => 'Smartphone A1 64GB', 'product_type' => 'goods', 'base_unit_id' => $units['pc']->id,
+            'category_id' => $categories['Household']->id, 'tax_code_id' => $gst->id, 'cost_price' => '42000', 'sale_price' => '48500',
+            'reorder_level' => '2', 'status' => 'active', 'track_serial' => true, 'warranty_months' => 12,
+        ]);
 
         // Rates are examples — enter the real rate of the day before selling.
         MarketRate::query()->create(['code' => 'GOLD-22K', 'name' => 'Gold 22 karat', 'per_unit' => 'gram', 'rate' => '38000']);

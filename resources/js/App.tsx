@@ -24,6 +24,8 @@ import SuppliersPage from './pages/SuppliersPage';
 import StockCountsPage from './pages/StockCountsPage';
 import ReorderPage from './pages/ReorderPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import ExpiryPage from './pages/ExpiryPage';
+import SerialLookupPage from './pages/SerialLookupPage';
 
 export default function App() {
     const token = useSession((s) => s.token);
@@ -62,6 +64,8 @@ export default function App() {
                 <Route path="/stock-counts" element={<StockCountsPage />} />
                 <Route path="/reorder" element={<ReorderPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/expiry" element={<ExpiryPage />} />
+                <Route path="/serials" element={<SerialLookupPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

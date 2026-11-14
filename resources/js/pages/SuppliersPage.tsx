@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Button from 'devextreme-react/button';
 import { Column, Lookup, RequiredRule } from 'devextreme-react/data-grid';
 import CrudGrid from '../components/CrudGrid';
+import { customColumns, useCustomFields } from '../components/CustomColumns';
 import PaymentPopup from '../components/PaymentPopup';
 import Page from '../components/Page';
 import { numberColumn } from '../lib/format';
@@ -11,6 +12,7 @@ export default function SuppliersPage() {
     const canManage = useCan('purchasing.supplier.manage');
     const canPay = useCan('purchasing.payment.create');
     const companyId = useCompanyId();
+    const customFields = useCustomFields('supplier');
     const [selected, setSelected] = useState<string | null>(null);
     const [version, setVersion] = useState(0);
 
@@ -25,6 +27,7 @@ export default function SuppliersPage() {
                 <Column dataField="tax_no" caption="Tax no." width={140} />
                 <Column dataField="payment_terms_days" caption="Terms (days)" dataType="number" width={130} />
                 <Column {...numberColumn('balance')} caption="We owe" allowEditing={false} />
+                {customColumns(customFields)}
                 <Column dataField="status" width={120}><Lookup dataSource={['active', 'inactive']} /></Column>
                 <Column
                     caption="" width={130} allowSorting={false} allowFiltering={false} allowEditing={false} allowExporting={false}

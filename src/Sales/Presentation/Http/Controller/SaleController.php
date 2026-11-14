@@ -6,6 +6,7 @@ namespace Sales\Presentation\Http\Controller;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Organization\Domain\Contract\BranchContext;
 use Sales\Application\PriceCart;
@@ -16,6 +17,7 @@ use Sales\Domain\Enum\PaymentMethod;
 use Sales\Infrastructure\Persistence\Eloquent\PosShift;
 use Sales\Infrastructure\Persistence\Eloquent\Sale;
 use Sales\Infrastructure\Persistence\Eloquent\SalesReturn;
+use Shared\Domain\Contract\TenantContext;
 use Shared\Domain\Support\Decimal;
 use Shared\Infrastructure\Validation\TenantRule;
 
@@ -99,6 +101,9 @@ final class SaleController
             ->map(static fn ($items): string => Decimal::sum($items, 'quantity', Decimal::QTY_SCALE));
         $sale->items->each(static fn ($item) => $item->setAttribute('returned_quantity', $returned[$item->id] ?? '0'));
 
+        $serials = DB::table('sold_serials')->where('sale_id', $sale->id)->get(['sale_item_id', 'serial'])->groupBy('sale_item_id');
+        $sale->items->each(static fn ($item) => $item->setAttribute('serials', ($serials[$item->id] ?? collect())->pluck('serial')->values()));
+
         return new JsonResponse(['data' => $sale]);
     }
 
@@ -131,6 +136,25 @@ final class SaleController
         return new JsonResponse(['data' => $return], 201);
     }
 
+    /** Warranty / service lookup: where and when a serial or IMEI was sold. */
+    public function serial(Request $request, TenantContext $tenant): JsonResponse
+    {
+        $serial = strtoupper(trim((string) $request->validate(['serial' => ['required', 'string', 'max:100']])['serial']));
+
+        $rows = DB::table('sold_serials as ss')
+            ->join('products as p', 'p.id', '=', 'ss.product_id')
+            ->join('sales as s', 's.id', '=', 'ss.sale_id')
+            ->leftJoin('customers as c', 'c.id', '=', 'ss.customer_id')
+            ->where('ss.tenant_id', $tenant->requireId())->where('ss.serial', $serial)
+            ->get([
+                'ss.serial', 'p.sku', 'p.name as product_name', 's.id as sale_id', 's.sale_no', 'ss.sold_at',
+                'c.name as customer_name', 'c.phone as customer_phone', 'ss.warranty_until',
+                DB::raw('(ss.warranty_until IS NOT NULL AND ss.warranty_until >= CURRENT_DATE) AS in_warranty'),
+            ]);
+
+        return new JsonResponse(['data' => $rows]);
+    }
+
     public function returns(BranchContext $branches): JsonResponse
     {
         $allowed = $branches->allowedBranchIds();
@@ -155,6 +179,8 @@ final class SaleController
             'lines.*.unit_price' => ['nullable', 'numeric', 'min:0', 'decimal:0,4'],
             'lines.*.discount' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
             'lines.*.unit_id' => ['nullable', 'uuid'],
+            'lines.*.serials' => ['sometimes', 'array', 'max:500'],
+            'lines.*.serials.*' => ['string', 'max:100'],
             'coupon_code' => ['nullable', 'string', 'max:50'],
             'price_tier' => ['nullable', 'in:retail,wholesale'],
             'customer_id' => ['nullable', 'uuid', TenantRule::exists('customers')],

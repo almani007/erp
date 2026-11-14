@@ -13,6 +13,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::get('inventory/balances', [StockController::class, 'balances'])->middleware($view);
     Route::get('inventory/movements', [StockController::class, 'movements'])->middleware($view);
+    Route::get('inventory/lots', [StockController::class, 'lots'])->middleware($view);
 
     Route::get('stock-adjustments', [StockAdjustmentController::class, 'index'])->middleware($view);
     Route::get('stock-adjustments/{adjustmentId}', [StockAdjustmentController::class, 'show'])->middleware($view);

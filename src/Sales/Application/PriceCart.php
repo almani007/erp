@@ -107,6 +107,7 @@ final class PriceCart
                 'unit_name' => $unit?->name,
                 'unit_factor' => $factor,
                 'base_quantity' => $baseQuantity,
+                'serials' => array_values(array_unique(array_filter(array_map(static fn ($v): string => strtoupper(trim((string) $v)), $line['serials'] ?? [])))),
             ] + $q;
 
             $totals['discount_total'] = Decimal::add($totals['discount_total'], $q['discount']);
