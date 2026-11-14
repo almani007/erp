@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Button from 'devextreme-react/button';
+import Popup from 'devextreme-react/popup';
 import SelectBox from 'devextreme-react/select-box';
-import { api, getList, notifyError } from '../lib/api';
+import TextBox from 'devextreme-react/text-box';
+import { api, getList, notifyError, notifySuccess } from '../lib/api';
 import { Branch, useSession } from '../lib/store';
 
 interface NavLink {
@@ -16,6 +18,7 @@ const NAV: { section: string; links: NavLink[] }[] = [
     {
         section: 'Overview', links: [
             { text: 'Dashboard', icon: 'home', path: '/', permission: 'reporting.dashboard.view' },
+            { text: 'Sales analysis', icon: 'datausage', path: '/analytics', permission: 'reporting.analytics.view' },
         ],
     },
     {
@@ -36,10 +39,12 @@ const NAV: { section: string; links: NavLink[] }[] = [
     {
         section: 'Supply chain', links: [
             { text: 'Purchase orders', icon: 'orderedlist', path: '/purchase-orders', permission: 'purchasing.order.view' },
+            { text: 'Reorder suggestions', icon: 'bell', path: '/reorder', permission: 'purchasing.order.view' },
             { text: 'Suppliers', icon: 'user', path: '/suppliers', permission: 'purchasing.supplier.view' },
             { text: 'Stock on hand', icon: 'box', path: '/stock', permission: 'inventory.stock.view' },
             { text: 'Adjustments', icon: 'edit', path: '/stock-adjustments', permission: 'inventory.stock.view' },
             { text: 'Transfers', icon: 'movetofolder', path: '/stock-transfers', permission: 'inventory.stock.view' },
+            { text: 'Stock counts', icon: 'checklist', path: '/stock-counts', permission: 'inventory.stock.view' },
         ],
     },
     {
@@ -51,7 +56,7 @@ const NAV: { section: string; links: NavLink[] }[] = [
     },
     {
         section: 'Administration', links: [
-            { text: 'Branches & warehouses', icon: 'map', path: '/organization' },
+            { text: 'Business & branches', icon: 'map', path: '/organization' },
             { text: 'Users & roles', icon: 'key', path: '/users', permission: 'identity.user.view' },
             { text: 'Audit log', icon: 'clock', path: '/audit-log', permission: 'identity.audit.view' },
         ],
@@ -65,6 +70,7 @@ export default function Layout() {
     const { pathname } = useLocation();
     const { user, roles, permissions, branches, activeBranchId, setBranches, setActiveBranch, signOut } = useSession();
     const [collapsed, setCollapsed] = useState(() => localStorage.getItem('erp-nav-collapsed') === '1');
+    const [passwordOpen, setPasswordOpen] = useState(false);
 
     useEffect(() => {
         getList<Branch>('/branches').then(setBranches).catch(notifyError);
@@ -133,7 +139,8 @@ export default function Layout() {
                         stylingMode="outlined"
                         inputAttr={{ 'aria-label': 'Branch' }}
                     />
-                    <div className="erp-user">
+                    <div className="erp-user" role="button" tabIndex={0} title="Change password" style={{ cursor: 'pointer' }}
+                        onClick={() => setPasswordOpen(true)} onKeyDown={(e) => e.key === 'Enter' && setPasswordOpen(true)}>
                         <div className="erp-avatar">{initials}</div>
                         <div>
                             <div className="erp-user-name">{user?.name}</div>
@@ -146,7 +153,40 @@ export default function Layout() {
                 <main className="erp-content" key={activeBranchId ?? ALL_BRANCHES}>
                     <Outlet />
                 </main>
+                {passwordOpen && <ChangePassword onClose={() => setPasswordOpen(false)} />}
             </div>
         </div>
+    );
+}
+
+function ChangePassword({ onClose }: { onClose: () => void }) {
+    const [current, setCurrent] = useState('');
+    const [next, setNext] = useState('');
+    const [busy, setBusy] = useState(false);
+
+    const save = async () => {
+        setBusy(true);
+        try {
+            await api.post('/auth/password', { current_password: current, password: next });
+            notifySuccess('Password changed. Other devices have been signed out.');
+            onClose();
+        } catch (e) {
+            notifyError(e);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <Popup visible title="Change password" width={420} height="auto" onHiding={onClose} showCloseButton>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <TextBox label="Current password" mode="password" value={current} valueChangeEvent="input" onValueChanged={(e) => setCurrent(e.value)} />
+                <TextBox label="New password (at least 10 characters)" mode="password" value={next} valueChangeEvent="input" onValueChanged={(e) => setNext(e.value)} />
+            </div>
+            <div className="erp-actions">
+                <Button text="Cancel" onClick={onClose} />
+                <Button text={busy ? 'Saving…' : 'Change password'} type="default" disabled={busy || !current || next.length < 10} onClick={save} />
+            </div>
+        </Popup>
     );
 }

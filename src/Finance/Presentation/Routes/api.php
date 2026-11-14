@@ -18,6 +18,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('journal-entries', [JournalController::class, 'index'])->middleware('permission:finance.journal.view');
     Route::get('journal-entries/{journalId}', [JournalController::class, 'show'])->middleware('permission:finance.journal.view');
     Route::post('journal-entries', [JournalController::class, 'store'])->middleware(['permission:finance.journal.create', 'idempotent']);
+    Route::post('vouchers', [JournalController::class, 'voucher'])->middleware(['permission:finance.voucher.create', 'idempotent']);
     Route::post('journal-entries/{journalId}/reverse', [JournalController::class, 'reverse'])->middleware('permission:finance.journal.reverse');
 
     Route::get('accounting-periods', [PeriodController::class, 'index'])->middleware('permission:finance.account.view');

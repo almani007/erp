@@ -30,7 +30,7 @@ final class SaleController
         $branchId = PosShift::query()->where('cashier_id', $request->user()->id)->where('status', 'open')->value('branch_id')
             ?? $branches->activeBranchId();
 
-        $priced = $cart->price($data['lines'], $request->user()->can('sales.price.override'), $branchId, $data['coupon_code'] ?? null);
+        $priced = $cart->price($data['lines'], $request->user()->can('sales.price.override'), $branchId, $data['coupon_code'] ?? null, $data['customer_id'] ?? null, $data['price_tier'] ?? null);
 
         $priced['coupon'] = $priced['coupon']?->code;
         $priced['lines'] = array_map(static fn (array $line): array => [
@@ -45,7 +45,6 @@ final class SaleController
     public function store(Request $request, RecordSale $action): JsonResponse
     {
         $data = $request->validate($this->lineRules() + [
-            'customer_id' => ['nullable', 'uuid', TenantRule::exists('customers')],
             'tenders' => ['required', 'array', 'min:1', 'max:10'],
             'tenders.*.method' => ['required', Rule::enum(PaymentMethod::class)],
             'tenders.*.amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
@@ -60,6 +59,7 @@ final class SaleController
             mayOverridePrice: $request->user()->can('sales.price.override'),
             idempotencyKey: $request->header('Idempotency-Key'),
             couponCode: $data['coupon_code'] ?? null,
+            priceTier: $data['price_tier'] ?? null,
         );
 
         return new JsonResponse(['data' => $sale], 201);
@@ -154,7 +154,10 @@ final class SaleController
             'lines.*.quantity' => ['required', 'numeric', 'gt:0', 'decimal:0,6'],
             'lines.*.unit_price' => ['nullable', 'numeric', 'min:0', 'decimal:0,4'],
             'lines.*.discount' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
+            'lines.*.unit_id' => ['nullable', 'uuid'],
             'coupon_code' => ['nullable', 'string', 'max:50'],
+            'price_tier' => ['nullable', 'in:retail,wholesale'],
+            'customer_id' => ['nullable', 'uuid', TenantRule::exists('customers')],
         ];
     }
 }

@@ -14,6 +14,7 @@ Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttl
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
+    Route::post('auth/password', [AuthController::class, 'changePassword'])->middleware('throttle:10,1');
 
     Route::get('users', [UserController::class, 'index'])->middleware('permission:identity.user.view');
     Route::post('users', [UserController::class, 'store'])->middleware('permission:identity.user.manage');

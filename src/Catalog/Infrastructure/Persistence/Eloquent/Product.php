@@ -36,6 +36,16 @@ final class Product extends Model
         'track_expiry',
         'sale_price',
         'cost_price',
+        'parent_id',
+        'variant_attributes',
+        'wholesale_price',
+        'wholesale_min_qty',
+        'pricing_mode',
+        'rate_code',
+        'weight',
+        'making_charge',
+        'wastage_percent',
+        'purity',
         'reorder_level',
         'status',
         'description',
@@ -51,6 +61,7 @@ final class Product extends Model
             'track_serial' => 'boolean',
             'track_expiry' => 'boolean',
             'metadata' => 'array',
+            'variant_attributes' => 'array',
         ];
     }
 
@@ -77,6 +88,18 @@ final class Product extends Model
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class, 'product_id');
+    }
+
+    /** Packs this product can also be sold in (carton, dozen …). */
+    public function units(): HasMany
+    {
+        return $this->hasMany(ProductUnit::class, 'product_id')->orderBy('factor');
+    }
+
+    /** Size/colour variants of this style. */
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('sku');
     }
 
     public function barcodes(): HasMany

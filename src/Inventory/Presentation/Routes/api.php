@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 use Inventory\Presentation\Http\Controller\StockAdjustmentController;
 use Inventory\Presentation\Http\Controller\StockController;
+use Inventory\Presentation\Http\Controller\StockCountController;
 use Inventory\Presentation\Http\Controller\StockTransferController;
 
 Route::middleware('auth:sanctum')->group(function (): void {
@@ -23,4 +24,13 @@ Route::middleware('auth:sanctum')->group(function (): void {
         ->middleware(['permission:inventory.transfer.manage', 'idempotent']);
     Route::post('stock-transfers/{transferId}/receive', [StockTransferController::class, 'receive'])
         ->middleware('permission:inventory.transfer.manage');
+
+    $count = 'permission:inventory.count.manage';
+
+    Route::get('stock-counts', [StockCountController::class, 'index'])->middleware($view);
+    Route::get('stock-counts/{countId}', [StockCountController::class, 'show'])->middleware($view);
+    Route::post('stock-counts', [StockCountController::class, 'store'])->middleware($count);
+    Route::put('stock-counts/{countId}/lines', [StockCountController::class, 'enter'])->middleware($count);
+    Route::post('stock-counts/{countId}/post', [StockCountController::class, 'post'])->middleware($count);
+    Route::post('stock-counts/{countId}/cancel', [StockCountController::class, 'cancel'])->middleware($count);
 });

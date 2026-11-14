@@ -27,7 +27,7 @@ final class RolesAndPermissionsSeeder extends Seeder
 
         'catalog.product.view', 'catalog.product.manage', 'catalog.master.manage', 'catalog.pricing.manage',
 
-        'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage',
+        'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage', 'inventory.count.manage',
 
         'sales.sale.view', 'sales.sale.create', 'sales.sale.void', 'sales.price.override',
         'sales.shift.manage', 'sales.customer.view', 'sales.customer.manage',
@@ -38,9 +38,9 @@ final class RolesAndPermissionsSeeder extends Seeder
 
         'finance.account.view', 'finance.account.manage',
         'finance.journal.view', 'finance.journal.create', 'finance.journal.reverse',
-        'finance.period.manage', 'finance.report.view',
+        'finance.period.manage', 'finance.report.view', 'finance.voucher.create',
 
-        'reporting.dashboard.view',
+        'reporting.dashboard.view', 'reporting.analytics.view',
     ];
 
     /** `tenant_owner` is granted everything through Gate::before, not listed grants. */
@@ -48,27 +48,27 @@ final class RolesAndPermissionsSeeder extends Seeder
         'tenant_owner' => [],
         'finance_controller' => [
             'organization.company.view', 'finance.account.view', 'finance.account.manage', 'finance.journal.view',
-            'finance.journal.create', 'finance.journal.reverse', 'finance.period.manage', 'finance.report.view',
+            'finance.journal.create', 'finance.journal.reverse', 'finance.period.manage', 'finance.report.view', 'finance.voucher.create',
             'sales.sale.view', 'sales.customer.view', 'sales.payment.receive', 'inventory.stock.view', 'catalog.product.view',
             'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.order.approve', 'purchasing.payment.create',
-            'identity.audit.view', 'reporting.dashboard.view',
+            'identity.audit.view', 'reporting.dashboard.view', 'reporting.analytics.view',
         ],
         'accountant' => [
             'organization.company.view', 'finance.account.view', 'finance.journal.view', 'finance.journal.create',
-            'finance.report.view', 'sales.sale.view', 'sales.customer.view', 'sales.payment.receive',
+            'finance.voucher.create', 'finance.report.view', 'sales.sale.view', 'sales.customer.view', 'sales.payment.receive',
             'purchasing.supplier.view', 'purchasing.order.view', 'reporting.dashboard.view',
         ],
         'branch_manager' => [
             'catalog.product.view', 'catalog.product.manage', 'catalog.master.manage', 'catalog.pricing.manage',
-            'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage',
+            'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage', 'inventory.count.manage',
             'sales.sale.view', 'sales.sale.create', 'sales.sale.void', 'sales.price.override', 'sales.return.create',
             'sales.shift.manage', 'sales.customer.view', 'sales.customer.manage',
             'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.order.create', 'purchasing.receipt.create',
-            'reporting.dashboard.view',
+            'reporting.dashboard.view', 'reporting.analytics.view',
         ],
         'inventory_controller' => [
             'catalog.product.view', 'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage',
-            'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.receipt.create',
+            'inventory.count.manage', 'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.receipt.create',
         ],
         'procurement_manager' => [
             'catalog.product.view', 'inventory.stock.view', 'purchasing.supplier.view', 'purchasing.supplier.manage',

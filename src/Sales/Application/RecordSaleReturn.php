@@ -117,11 +117,13 @@ final class RecordSaleReturn
                     ->where('source_type', 'sale')->where('source_id', $sale->id)->where('product_id', $item->product_id)->exists();
 
                 if ($restock && $tracked) {
+                    // The line may have been sold in packs; stock and cost are kept in base units.
+                    $baseQty = Decimal::mul($qty, (string) $item->unit_factor, Decimal::QTY_SCALE);
                     $this->stock->receive(new StockPosting(
-                        $sale->company_id, $sale->warehouse_id, $item->product_id, $qty,
+                        $sale->company_id, $sale->warehouse_id, $item->product_id, $baseQty,
                         MovementType::SaleReturn, 'sales_return', $return->id,
                     ), (string) $item->cost_snapshot);
-                    $cost = Decimal::add($cost, Decimal::mul($qty, (string) $item->cost_snapshot, 2));
+                    $cost = Decimal::add($cost, Decimal::mul($baseQty, (string) $item->cost_snapshot, 2));
                 }
 
                 SalesReturnItem::query()->create([

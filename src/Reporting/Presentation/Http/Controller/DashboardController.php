@@ -6,6 +6,7 @@ namespace Reporting\Presentation\Http\Controller;
 
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Organization\Domain\Contract\BranchContext;
 use Shared\Domain\Contract\TenantContext;
@@ -90,5 +91,47 @@ final class DashboardController
                 ->whereIn('status', ['draft', 'approved', 'partially_received'])
                 ->when($allowed !== null, fn (Builder $b) => $b->whereIn('branch_id', $allowed))->count(),
         ]]);
+    }
+
+    /**
+     * Flat sale lines for the pivot analysis screen (who sold what, where,
+     * when, at what margin). Capped at 50,000 lines per request; narrow the
+     * dates for busy periods.
+     */
+    public function salesLines(Request $request, TenantContext $tenant, BranchContext $branches): JsonResponse
+    {
+        $q = $request->validate([
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+        ]);
+        $active = $branches->activeBranchId();
+        $allowed = $active !== null ? [$active] : $branches->allowedBranchIds();
+
+        $rows = DB::table('sale_items as si')
+            ->join('sales as s', 's.id', '=', 'si.sale_id')
+            ->join('branches as b', 'b.id', '=', 's.branch_id')
+            ->join('products as p', 'p.id', '=', 'si.product_id')
+            ->leftJoin('product_categories as c', 'c.id', '=', 'p.category_id')
+            ->leftJoin('users as u', 'u.id', '=', 's.cashier_id')
+            ->leftJoin('customers as cu', 'cu.id', '=', 's.customer_id')
+            ->where('s.tenant_id', $tenant->requireId())->where('s.status', 'completed')
+            ->whereBetween('s.sold_at', [$q['from'].' 00:00:00', $q['to'].' 23:59:59'])
+            ->when($allowed !== null, fn (Builder $b) => $b->whereIn('s.branch_id', $allowed))
+            ->orderBy('s.sold_at')
+            ->limit(50000)
+            ->get([
+                DB::raw('DATE(s.sold_at) AS sale_date'),
+                DB::raw('EXTRACT(HOUR FROM s.sold_at)::int AS hour'),
+                'b.name as branch', 'u.name as cashier', 's.price_tier',
+                DB::raw("COALESCE(cu.name, 'Walk-in') AS customer"),
+                DB::raw("COALESCE(c.name, 'Uncategorised') AS category"),
+                'si.product_name as product',
+                DB::raw('(si.quantity * si.unit_factor) AS quantity'),
+                'si.net_amount as net_sales', 'si.tax_amount as tax', 'si.discount_amount as discount',
+                DB::raw('ROUND(si.quantity * si.unit_factor * si.cost_snapshot, 2) AS cost'),
+                DB::raw('(si.net_amount - ROUND(si.quantity * si.unit_factor * si.cost_snapshot, 2)) AS margin'),
+            ]);
+
+        return new JsonResponse(['data' => $rows]);
     }
 }

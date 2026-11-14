@@ -32,6 +32,7 @@ final class VoidSale
         private readonly ReverseJournalEntry $reverseJournal,
         private readonly AuditTrail $audit,
         private readonly EventOutbox $outbox,
+        private readonly LoyaltyProgram $loyalty,
     ) {}
 
     public function execute(string $saleId, string $reason, string $actorId): Sale
@@ -59,7 +60,8 @@ final class VoidSale
 
                 if ($tracked) {
                     $this->stock->receive(new StockPosting(
-                        $sale->company_id, $sale->warehouse_id, $item->product_id, (string) $item->quantity,
+                        $sale->company_id, $sale->warehouse_id, $item->product_id,
+                        Decimal::mul((string) $item->quantity, (string) $item->unit_factor, Decimal::QTY_SCALE), // packs → base units
                         MovementType::SaleVoid, 'sale', $sale->id, 'void: '.$reason,
                     ), (string) $item->cost_snapshot);
                 }
@@ -71,6 +73,13 @@ final class VoidSale
             if ($sale->customer_id !== null && Decimal::isPositive($onCredit)) {
                 $customer = Customer::query()->lockForUpdate()->findOrFail($sale->customer_id);
                 $customer->forceFill(['balance' => Decimal::sub((string) $customer->balance, $onCredit)])->save();
+            }
+
+            // Give back the points spent and take back the points earned.
+            $pointsBack = (int) $sale->points_redeemed - (int) $sale->points_earned;
+            if ($sale->customer_id !== null && $pointsBack !== 0) {
+                $member = Customer::query()->lockForUpdate()->findOrFail($sale->customer_id);
+                $this->loyalty->move($member, $pointsBack, 'reverse', 'sale', $sale->id, 'void');
             }
 
             if ($sale->journal_entry_id !== null) {

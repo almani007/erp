@@ -15,5 +15,10 @@ final class Customer extends Model
 
     protected $table = 'customers';
 
-    protected $fillable = ['customer_code', 'name', 'phone', 'email', 'tax_no', 'credit_limit', 'status'];
+    protected $fillable = ['customer_code', 'name', 'phone', 'email', 'tax_no', 'credit_limit', 'status', 'price_tier'];
+
+    protected function casts(): array
+    {
+        return ['loyalty_points' => 'integer'];
+    }
 }

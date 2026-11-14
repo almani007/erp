@@ -44,6 +44,7 @@ final class RecordSale
         private readonly DocumentNumbers $numbers,
         private readonly TenantContext $tenant,
         private readonly EventOutbox $outbox,
+        private readonly LoyaltyProgram $loyalty,
     ) {}
 
     /**
@@ -58,23 +59,24 @@ final class RecordSale
         bool $mayOverridePrice,
         ?string $idempotencyKey,
         ?string $couponCode = null,
+        ?string $priceTier = null,
     ): Sale {
-        return DB::transaction(function () use ($cashierId, $lines, $tenders, $customerId, $mayOverridePrice, $idempotencyKey, $couponCode): Sale {
+        return DB::transaction(function () use ($cashierId, $lines, $tenders, $customerId, $mayOverridePrice, $idempotencyKey, $couponCode, $priceTier): Sale {
             // Locking the shift serialises this cashier's sales with closing the shift.
             $shift = PosShift::query()->where('cashier_id', $cashierId)->where('status', 'open')->lockForUpdate()->first()
                 ?? throw ShiftNotOpen::forCashier();
             $terminal = $shift->terminal;
             $company = Company::query()->findOrFail($shift->company_id);
 
-            $priced = $this->cart->price($lines, $mayOverridePrice, $shift->branch_id, $couponCode);
+            $priced = $this->cart->price($lines, $mayOverridePrice, $shift->branch_id, $couponCode, $customerId, $priceTier);
             $grandTotal = $priced['grand_total'];
 
             if (! Decimal::isPositive($grandTotal)) {
                 throw new \DomainException('The sale total must be greater than zero.');
             }
 
-            [$tenderRows, $paid, $change, $onCredit] = $this->settle($tenders, $grandTotal);
-            $customer = $this->chargeCustomer($customerId, $onCredit);
+            [$tenderRows, $paid, $change, $onCredit, $byPoints] = $this->settle($tenders, $grandTotal);
+            $customer = $this->chargeCustomer($customerId, $onCredit, $byPoints);
 
             $sale = Sale::query()->create([
                 'company_id' => $company->id,
@@ -96,6 +98,7 @@ final class RecordSale
                 'cost_total' => '0',
                 'idempotency_key' => $idempotencyKey,
                 'coupon_code' => $priced['coupon']?->code,
+                'price_tier' => $priced['price_tier'],
                 'sold_at' => now(),
             ]);
 
@@ -109,10 +112,10 @@ final class RecordSale
 
                 if ($product->product_type->tracksInventory()) {
                     $unitCost = $this->stock->issue(new StockPosting(
-                        $company->id, $terminal->warehouse_id, $product->id, $line['quantity'],
+                        $company->id, $terminal->warehouse_id, $product->id, $line['base_quantity'],
                         MovementType::Sale, 'sale', $sale->id,
                     ));
-                    $costTotal = Decimal::add($costTotal, Decimal::mul($line['quantity'], $unitCost, 2));
+                    $costTotal = Decimal::add($costTotal, Decimal::mul($line['base_quantity'], $unitCost, 2));
                 }
 
                 SaleItem::query()->create([
@@ -129,6 +132,8 @@ final class RecordSale
                     'line_total' => $line['total'],
                     'cost_snapshot' => $unitCost,
                     'promotion_name' => $line['promotion_name'],
+                    'unit_name' => $line['unit_name'],
+                    'unit_factor' => $line['unit_factor'],
                 ]);
             }
 
@@ -145,7 +150,22 @@ final class RecordSale
                 lines: $this->journalLines($sale, $tenderRows, $change, $priced['net_total'], $priced['tax_total'], $costTotal, $customer),
             ));
 
-            $sale->update(['cost_total' => $costTotal, 'journal_entry_id' => $journal->id]);
+            // Points: spend first, then earn on what was paid with real money.
+            $redeemed = 0;
+            $earned = 0;
+            if ($customer !== null) {
+                if (Decimal::isPositive($byPoints)) {
+                    $redeemed = $this->loyalty->pointsToCover($byPoints);
+                    $this->loyalty->move($customer, -$redeemed, 'redeem', 'sale', $sale->id);
+                }
+                $earned = $this->loyalty->pointsFor(Decimal::sub($grandTotal, $byPoints));
+                $this->loyalty->move($customer, $earned, 'earn', 'sale', $sale->id);
+            }
+
+            $sale->update([
+                'cost_total' => $costTotal, 'journal_entry_id' => $journal->id,
+                'points_earned' => $earned, 'points_redeemed' => $redeemed,
+            ]);
 
             $this->outbox->record('sales.sale.completed', 'sale', $sale->id, [
                 'sale_no' => $sale->sale_no,
@@ -178,8 +198,8 @@ final class RecordSale
      * Validate the tenders against the total.
      *
      * @param  list<array{method: string, amount: string|int|float, reference?: string|null}>  $tenders
-     * @return array{0: list<array{method: string, amount: string, external_reference: string|null}>, 1: string, 2: string, 3: string}
-     *                                                                                                                              rows, paid, change, amount on credit
+     * @return array{0: list<array{method: string, amount: string, external_reference: string|null}>, 1: string, 2: string, 3: string, 4: string}
+     *                                                                                                                                         rows, paid, change, amount on credit, amount paid with points
      */
     private function settle(array $tenders, string $grandTotal): array
     {
@@ -187,6 +207,7 @@ final class RecordSale
         $paid = '0';
         $cash = '0';
         $onCredit = '0';
+        $byPoints = '0';
 
         foreach ($tenders as $tender) {
             $method = PaymentMethod::from($tender['method']);
@@ -205,6 +226,9 @@ final class RecordSale
             if ($method === PaymentMethod::Credit) {
                 $onCredit = Decimal::add($onCredit, $amount);
             }
+            if ($method === PaymentMethod::Loyalty) {
+                $byPoints = Decimal::add($byPoints, $amount);
+            }
         }
 
         if (Decimal::cmp($paid, $grandTotal) < 0) {
@@ -217,14 +241,17 @@ final class RecordSale
             throw new \DomainException('Non-cash payments exceed the sale total.');
         }
 
-        return [$rows, $paid, $change, $onCredit];
+        return [$rows, $paid, $change, $onCredit, $byPoints];
     }
 
-    private function chargeCustomer(?string $customerId, string $onCredit): ?Customer
+    private function chargeCustomer(?string $customerId, string $onCredit, string $byPoints): ?Customer
     {
         if ($customerId === null) {
             if (Decimal::isPositive($onCredit)) {
                 throw new \DomainException('Select a customer to sell on credit.');
+            }
+            if (Decimal::isPositive($byPoints)) {
+                throw new \DomainException('Select a customer to pay with loyalty points.');
             }
 
             return null;

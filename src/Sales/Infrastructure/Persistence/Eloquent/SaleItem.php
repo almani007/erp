@@ -19,6 +19,6 @@ final class SaleItem extends Model
 
     protected $fillable = [
         'sale_id', 'product_id', 'sku', 'product_name', 'quantity', 'unit_price', 'discount_amount',
-        'tax_rate', 'tax_amount', 'net_amount', 'line_total', 'cost_snapshot', 'promotion_name',
+        'tax_rate', 'tax_amount', 'net_amount', 'line_total', 'cost_snapshot', 'promotion_name', 'unit_name', 'unit_factor',
     ];
 }

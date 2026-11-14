@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Organization\Domain\Contract\BranchContext;
+use Sales\Application\LoyaltyProgram;
 use Sales\Application\ReceiveCustomerPayment;
 use Sales\Infrastructure\Persistence\Eloquent\Customer;
 use Sales\Infrastructure\Persistence\Eloquent\CustomerPayment;
@@ -79,7 +80,29 @@ final class CustomerController
         return new JsonResponse(['data' => [
             'customer' => $customer,
             'payments' => CustomerPayment::query()->where('customer_id', $customer->id)->orderByDesc('received_at')->limit(100)->get(),
+            'loyalty' => DB::table('loyalty_transactions')->where('customer_id', $customer->id)->orderByDesc('created_at')->limit(50)
+                ->get(['id', 'type', 'points', 'source_type', 'note', 'created_at']),
         ]]);
+    }
+
+    /** Manual points correction (goodwill, migration from an old scheme). Audited. */
+    public function adjustLoyalty(Request $request, string $customerId, LoyaltyProgram $loyalty, AuditTrail $audit): JsonResponse
+    {
+        $data = $request->validate([
+            'points' => ['required', 'integer', 'not_in:0', 'between:-1000000,1000000'],
+            'note' => ['required', 'string', 'min:3', 'max:255'],
+        ]);
+
+        $customer = DB::transaction(function () use ($customerId, $data, $loyalty, $audit): Customer {
+            $customer = Customer::query()->lockForUpdate()->findOrFail($customerId);
+            $before = $customer->loyalty_points;
+            $loyalty->move($customer, (int) $data['points'], 'adjust', null, null, $data['note']);
+            $audit->record('sales.customer.loyalty_adjusted', 'customer', $customer->id, ['points' => $before], ['points' => $customer->loyalty_points], $data['note']);
+
+            return $customer;
+        });
+
+        return new JsonResponse(['data' => $customer]);
     }
 
     public function receivePayment(Request $request, string $customerId, ReceiveCustomerPayment $action, BranchContext $branches): JsonResponse
@@ -107,6 +130,7 @@ final class CustomerController
             'email' => ['nullable', 'email', 'max:150'],
             'tax_no' => ['nullable', 'string', 'max:80'],
             'credit_limit' => ['sometimes', 'numeric', 'min:0', 'decimal:0,2'],
+            'price_tier' => ['sometimes', 'in:retail,wholesale'],
         ];
     }
 }

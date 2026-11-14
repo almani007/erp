@@ -21,6 +21,9 @@ import PricingPage from './pages/PricingPage';
 import PriceCheckerPage from './pages/PriceCheckerPage';
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 import SuppliersPage from './pages/SuppliersPage';
+import StockCountsPage from './pages/StockCountsPage';
+import ReorderPage from './pages/ReorderPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 export default function App() {
     const token = useSession((s) => s.token);
@@ -56,6 +59,9 @@ export default function App() {
                 <Route path="/price-checker" element={<PriceCheckerPage />} />
                 <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
                 <Route path="/suppliers" element={<SuppliersPage />} />
+                <Route path="/stock-counts" element={<StockCountsPage />} />
+                <Route path="/reorder" element={<ReorderPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

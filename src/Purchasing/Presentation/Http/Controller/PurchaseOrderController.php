@@ -6,12 +6,14 @@ namespace Purchasing\Presentation\Http\Controller;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Organization\Domain\Contract\BranchContext;
 use Organization\Domain\Exception\BranchAccessDenied;
 use Organization\Infrastructure\Persistence\Eloquent\Warehouse;
 use Purchasing\Application\ManagePurchaseOrder;
 use Purchasing\Application\ReceiveGoods;
 use Purchasing\Infrastructure\Persistence\Eloquent\PurchaseOrder;
+use Shared\Domain\Contract\TenantContext;
 use Shared\Infrastructure\Validation\TenantRule;
 
 final class PurchaseOrderController
@@ -86,6 +88,47 @@ final class PurchaseOrderController
         $receipt = $action->execute($this->find($orderId, $branches)->id, $data['lines'], $data['supplier_invoice_no'] ?? null, $request->user()->id);
 
         return new JsonResponse(['data' => $receipt], 201);
+    }
+
+    /**
+     * Products at or below their reorder level in one warehouse, with a
+     * suggested order quantity: enough to reach twice the reorder level,
+     * less what is already on order for that warehouse.
+     */
+    public function reorderSuggestions(Request $request, BranchContext $branches, TenantContext $tenant): JsonResponse
+    {
+        $q = $request->validate(['warehouse_id' => ['required', 'uuid']]);
+
+        $warehouse = Warehouse::findOrFail($q['warehouse_id']);
+        if (! $branches->canAccess($warehouse->branch_id)) {
+            throw BranchAccessDenied::forBranch($warehouse->branch_id);
+        }
+
+        $onOrder = DB::table('purchase_order_items as i')
+            ->join('purchase_orders as o', 'o.id', '=', 'i.purchase_order_id')
+            ->where('o.warehouse_id', $warehouse->id)
+            ->whereIn('o.status', ['draft', 'approved', 'partially_received'])
+            ->groupBy('i.product_id')
+            ->selectRaw('i.product_id, SUM(i.quantity - i.received_quantity) AS qty');
+
+        $rows = DB::table('products as p')
+            ->leftJoin('stock_balances as sb', fn ($j) => $j->on('sb.product_id', '=', 'p.id')->where('sb.warehouse_id', $warehouse->id))
+            ->leftJoinSub($onOrder, 'oo', 'oo.product_id', '=', 'p.id')
+            ->where('p.tenant_id', $tenant->requireId())
+            ->where('p.status', 'active')
+            ->whereIn('p.product_type', ['goods', 'composite'])
+            ->where('p.reorder_level', '>', 0)
+            ->whereRaw('COALESCE(sb.on_hand, 0) + COALESCE(oo.qty, 0) <= p.reorder_level')
+            ->orderBy('p.name')
+            ->limit(1000)
+            ->get([
+                'p.id', 'p.sku', 'p.name', 'p.cost_price', 'p.reorder_level',
+                DB::raw('COALESCE(sb.on_hand, 0) AS on_hand'),
+                DB::raw('COALESCE(oo.qty, 0) AS on_order'),
+                DB::raw('GREATEST(p.reorder_level * 2 - COALESCE(sb.on_hand, 0) - COALESCE(oo.qty, 0), 0) AS suggested_qty'),
+            ]);
+
+        return new JsonResponse(['data' => $rows]);
     }
 
     private function find(string $orderId, BranchContext $branches): PurchaseOrder

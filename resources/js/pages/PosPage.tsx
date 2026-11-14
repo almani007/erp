@@ -8,10 +8,16 @@ import SelectBox from 'devextreme-react/select-box';
 import TextBox from 'devextreme-react/text-box';
 import { api, errorMessage, getList, getOne, idempotent, newIdempotencyKey, notifyError, notifySuccess } from '../lib/api';
 import { money, qty } from '../lib/format';
+import { useAppConfig } from '../lib/config';
 import { useCan } from '../lib/store';
 
 interface CartLine {
+    /** product + pack: the same product can be in the cart singly and by the carton. */
+    key: string;
     product_id: string;
+    /** Pack being sold (carton, dozen); null = single units. */
+    unit_id: string | null;
+    packs: { id: string; name: string; factor: string }[];
     name: string;
     sku: string;
     quantity: number;
@@ -46,9 +52,10 @@ const METHODS = [
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Lines as the API expects them: price and discount only when the cashier set them. */
-const toLines = (cart: CartLine[]) => cart.map(({ product_id, quantity, unit_price, discount }) => ({
+const toLines = (cart: CartLine[]) => cart.map(({ product_id, unit_id, quantity, unit_price, discount }) => ({
     product_id,
     quantity,
+    ...(unit_id ? { unit_id } : {}),
     ...(unit_price !== undefined ? { unit_price } : {}),
     ...(discount ? { discount } : {}),
 }));
@@ -121,6 +128,8 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
     const [quoteError, setQuoteError] = useState<string | null>(null);
     const [customerId, setCustomerId] = useState<string | null>(null);
     const [coupon, setCoupon] = useState('');
+    const [wholesale, setWholesale] = useState(false);
+    const { config, features } = useAppConfig();
     const [code, setCode] = useState('');
     const [search, setSearch] = useState('');
     const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -154,7 +163,7 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
         }
         const seq = ++quoteSeq.current;
         const timer = setTimeout(() => {
-            api.post('/pos/quote', { lines: toLines(cart), coupon_code: coupon.trim() || null })
+            api.post('/pos/quote', { lines: toLines(cart), coupon_code: coupon.trim() || null, customer_id: customerId, price_tier: wholesale ? 'wholesale' : null })
                 .then(({ data }) => {
                     if (seq === quoteSeq.current) {
                         setQuote(data.data);
@@ -168,15 +177,16 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
                 });
         }, 150);
         return () => clearTimeout(timer);
-    }, [cart, coupon]);
+    }, [cart, coupon, customerId, wholesale]);
 
-    const addProduct = useCallback((product: any) => {
+    const addProduct = useCallback((product: any, unitId: string | null = null) => {
+        const key = `${product.id}|${unitId ?? ''}`;
         setCart((lines) => {
-            const existing = lines.find((l) => l.product_id === product.id);
+            const existing = lines.find((l) => l.key === key);
             if (existing) {
                 return lines.map((l) => (l === existing ? { ...l, quantity: l.quantity + 1 } : l));
             }
-            return [...lines, { product_id: product.id, name: product.name, sku: product.sku, quantity: 1 }];
+            return [...lines, { key, product_id: product.id, unit_id: unitId, packs: product.units ?? [], name: product.name, sku: product.sku, quantity: 1 }];
         });
     }, []);
 
@@ -187,26 +197,38 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
         }
         setCode('');
         try {
-            addProduct(await getOne('/products/lookup', { code: value }));
+            const product = await getOne('/products/lookup', { code: value });
+            addProduct(product, product.scanned_unit_id ?? null); // a carton barcode adds the carton
         } catch (e) {
             notifyError(e);
         }
     };
 
-    const update = (productId: string, patch: Partial<CartLine>) =>
-        setCart((lines) => lines.map((l) => (l.product_id === productId ? { ...l, ...patch } : l)));
+    const update = (key: string, patch: Partial<CartLine>) =>
+        setCart((lines) => lines.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+
+    /** Switch a line between single units and a pack; merges with an identical line if there is one. */
+    const changePack = (line: CartLine, unitId: string | null) =>
+        setCart((lines) => {
+            const key = `${line.product_id}|${unitId ?? ''}`;
+            const twin = lines.find((l) => l.key === key && l !== line);
+            if (twin) {
+                return lines.filter((l) => l !== line).map((l) => (l === twin ? { ...l, quantity: l.quantity + line.quantity } : l));
+            }
+            return lines.map((l) => (l === line ? { ...l, key, unit_id: unitId, unit_price: undefined } : l));
+        });
 
     const clear = () => {
         setCart([]);
         setCustomerId(null);
         setCoupon('');
+        setWholesale(false);
     };
 
     const hold = () => {
         if (cart.length === 0) {
             return;
         }
-        const customer = (customers.data ?? []).find((c: any) => c.id === customerId);
         saveHeld([...held, {
             id: newIdempotencyKey(),
             label: customer?.name ?? `${cart.length} item${cart.length === 1 ? '' : 's'}`,
@@ -264,7 +286,9 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
             .slice(0, 120);
     }, [products.data, categoryId, search]);
 
-    const quoted = (productId: string) => quote?.lines?.find((l: any) => l.product_id === productId);
+    // The server returns priced lines in cart order.
+    const quoted = (index: number) => (quote?.lines?.length === cart.length ? quote.lines[index] : undefined);
+    const customer = (customers.data ?? []).find((c: any) => c.id === customerId);
     const grandTotal = Number(quote?.grand_total ?? 0);
 
     return (
@@ -294,7 +318,7 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
                         <button type="button" className="pos-tile" key={p.id} onClick={() => addProduct(p)}>
                             <span className="pos-tile-name">{p.name}</span>
                             <span className="pos-tile-sku">{p.sku}</span>
-                            <span className="pos-tile-price">{money(p.sale_price)}</span>
+                            <span className="pos-tile-price">{p.pricing_mode === 'rate' ? 'Today\'s rate' : money(p.sale_price)}</span>
                         </button>
                     ))}
                     {tiles.length === 0 && <div className="erp-muted">No products match.</div>}
@@ -316,6 +340,15 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
                     </div>
                 </div>
 
+                {features.wholesale && (
+                    <div style={{ padding: '12px 16px 0', display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <button type="button" className={`pos-chip${!wholesale ? ' active' : ''}`} onClick={() => setWholesale(false)}>Retail</button>
+                        <button type="button" className={`pos-chip${wholesale ? ' active' : ''}`} onClick={() => setWholesale(true)}>Wholesale</button>
+                        <span className="erp-muted">
+                            {quote?.price_tier === 'wholesale' ? 'Wholesale prices apply where the minimum quantity is met' : 'Retail prices'}
+                        </span>
+                    </div>
+                )}
                 <div style={{ padding: '12px 16px 4px', display: 'grid', gridTemplateColumns: '1fr 140px', gap: 8 }}>
                     <SelectBox
                         placeholder="Walk-in customer" dataSource={customers.data ?? []} valueExpr="id" displayExpr="name" value={customerId}
@@ -326,26 +359,34 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
 
                 <div className="pos-cart">
                     {cart.length === 0 && <div className="pos-empty">The cart is empty.<br />Scan an item or tap a product.</div>}
-                    {cart.map((line) => {
-                        const q = quoted(line.product_id);
+                    {cart.map((line, index) => {
+                        const q = quoted(index);
                         return (
-                            <div className="pos-line" key={line.product_id}>
+                            <div className="pos-line" key={line.key}>
                                 <div className="pos-line-top">
                                     <div>
                                         <div className="pos-line-name">{line.name}</div>
+                                        {line.packs.length > 0 && (
+                                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0' }}>
+                                                <button type="button" className={`pos-chip${line.unit_id === null ? ' active' : ''}`} style={{ padding: '2px 10px' }} onClick={() => changePack(line, null)}>Single</button>
+                                                {line.packs.map((pack) => (
+                                                    <button type="button" key={pack.id} className={`pos-chip${line.unit_id === pack.id ? ' active' : ''}`} style={{ padding: '2px 10px' }} onClick={() => changePack(line, pack.id)}>{pack.name}</button>
+                                                ))}
+                                            </div>
+                                        )}
                                         {q?.promotion_name && <div className="pos-promo">{q.promotion_name} · −{money(q.promotion_discount)}</div>}
                                     </div>
                                     <div className="pos-line-total">{q ? money(q.total) : '…'}</div>
                                 </div>
                                 <div className="pos-line-controls">
-                                    <NumberBox value={line.quantity} min={0.001} showSpinButtons step={1} onValueChanged={(e) => update(line.product_id, { quantity: e.value || 1 })} />
+                                    <NumberBox value={line.quantity} min={0.001} showSpinButtons step={1} onValueChanged={(e) => update(line.key, { quantity: e.value || 1 })} />
                                     <NumberBox
                                         value={line.unit_price ?? Number(q?.unit_price ?? 0)} min={0} format="#,##0.00" readOnly={!canOverride} hint="Unit price"
-                                        onValueChanged={(e) => e.event && update(line.product_id, { unit_price: e.value ?? 0 })}
+                                        onValueChanged={(e) => e.event && update(line.key, { unit_price: e.value ?? 0 })}
                                     />
                                     <NumberBox
                                         value={line.discount ?? 0} min={0} format="#,##0.00" readOnly={!canOverride} hint="Extra discount on this line" placeholder="Discount"
-                                        onValueChanged={(e) => e.event && update(line.product_id, { discount: e.value ?? 0 })}
+                                        onValueChanged={(e) => e.event && update(line.key, { discount: e.value ?? 0 })}
                                     />
                                     <Button icon="trash" stylingMode="text" hint="Remove" onClick={() => setCart((lines) => lines.filter((l) => l !== line))} />
                                 </div>
@@ -373,7 +414,8 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
 
             {dialog === 'pay' && (
                 <Payment
-                    cart={cart} total={grandTotal} customerId={customerId} coupon={coupon}
+                    cart={cart} total={grandTotal} customerId={customerId} coupon={coupon} wholesale={wholesale}
+                    points={Number(customer?.loyalty_points ?? 0)} pointValue={config?.loyalty.enabled ? Number(config.loyalty.point_value) : 0}
                     onClose={() => setDialog(null)}
                     onDone={(sale) => {
                         setDialog(null);
@@ -408,9 +450,14 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
     );
 }
 
-function Payment({ cart, total, customerId, coupon, onClose, onDone }: {
-    cart: CartLine[]; total: number; customerId: string | null; coupon: string; onClose: () => void; onDone: (sale: any) => void;
+function Payment({ cart, total, customerId, coupon, wholesale, points, pointValue, onClose, onDone }: {
+    cart: CartLine[]; total: number; customerId: string | null; coupon: string; wholesale: boolean;
+    /** The customer's loyalty points and what one point is worth (0 = loyalty off). */
+    points: number; pointValue: number;
+    onClose: () => void; onDone: (sale: any) => void;
 }) {
+    const pointsWorth = round2(points * pointValue);
+    const methods = pointsWorth > 0 ? [...METHODS, { id: 'loyalty', name: `Loyalty points (${points} = ${money(pointsWorth)})` }] : METHODS;
     const [tenders, setTenders] = useState<Tender[]>([]);
     const [method, setMethod] = useState('cash');
     const [amount, setAmount] = useState(total);
@@ -438,7 +485,7 @@ function Payment({ cart, total, customerId, coupon, onClose, onDone }: {
         setBusy(true);
         try {
             const { data } = await api.post('/sales', {
-                customer_id: customerId, coupon_code: coupon.trim() || null, lines: toLines(cart), tenders,
+                customer_id: customerId, coupon_code: coupon.trim() || null, price_tier: wholesale ? 'wholesale' : null, lines: toLines(cart), tenders,
             }, idempotent(key.current));
             onDone(data.data);
         } catch (e) {
@@ -458,9 +505,17 @@ function Payment({ cart, total, customerId, coupon, onClose, onDone }: {
                 </div>
             )}
             <div className="erp-row">
-                <SelectBox label="Method" width={160} dataSource={METHODS} valueExpr="id" displayExpr="name" value={method} onValueChanged={(e) => setMethod(e.value)} />
-                <NumberBox label="Amount" width={140} value={amount} min={0} format="#,##0.00" onValueChanged={(e) => setAmount(e.value ?? 0)} />
-                {method !== 'cash' && method !== 'credit' && (
+                <SelectBox
+                    label="Method" width={200} dataSource={methods} valueExpr="id" displayExpr="name" value={method}
+                    onValueChanged={(e) => {
+                        setMethod(e.value);
+                        if (e.value === 'loyalty') {
+                            setAmount((current) => Math.min(current, pointsWorth)); // cannot spend more than the points are worth
+                        }
+                    }}
+                />
+                <NumberBox label="Amount" width={140} value={amount} min={0} max={method === 'loyalty' ? pointsWorth : undefined} format="#,##0.00" onValueChanged={(e) => setAmount(e.value ?? 0)} />
+                {method !== 'cash' && method !== 'credit' && method !== 'loyalty' && (
                     <TextBox label="Reference" width={130} value={reference} onValueChanged={(e) => setReference(e.value)} />
                 )}
                 <Button text="Add" stylingMode="outlined" onClick={() => addTender({ method, amount, reference: reference || undefined })} />
@@ -468,7 +523,7 @@ function Payment({ cart, total, customerId, coupon, onClose, onDone }: {
             {method === 'credit' && !customerId && <div className="erp-error">Select a customer on the sale to sell on account.</div>}
             {tenders.map((t, i) => (
                 <div className="pos-total-row" key={i}>
-                    <span>{METHODS.find((m) => m.id === t.method)?.name}{t.reference ? ` (${t.reference})` : ''}</span>
+                    <span>{t.method === 'loyalty' ? 'Loyalty points' : METHODS.find((m) => m.id === t.method)?.name}{t.reference ? ` (${t.reference})` : ''}</span>
                     <span>
                         {money(t.amount)}
                         <Button icon="close" stylingMode="text" hint="Remove" onClick={() => setTenders(tenders.filter((_, j) => j !== i))} />
@@ -498,7 +553,7 @@ function Receipt({ sale, onClose }: { sale: any; onClose: () => void }) {
                 </div>
                 {sale.items.map((item: any) => (
                     <div className="pos-total-row" key={item.id}>
-                        <span>{qty(item.quantity)} × {item.product_name}</span>
+                        <span>{qty(item.quantity)} {item.unit_name ?? '×'} {item.product_name}</span>
                         <span>{money(item.line_total)}</span>
                     </div>
                 ))}
@@ -507,6 +562,9 @@ function Receipt({ sale, onClose }: { sale: any; onClose: () => void }) {
                 <div className="pos-total-row grand"><span>Total</span><span>{money(sale.grand_total)}</span></div>
                 <div className="pos-total-row"><span>Paid</span><span>{money(sale.paid_total)}</span></div>
                 <div className="pos-total-row"><span>Change</span><span>{money(sale.change_total)}</span></div>
+                {(sale.points_earned > 0 || sale.points_redeemed > 0) && (
+                    <div className="pos-total-row"><span>Loyalty points</span><span>+{sale.points_earned} earned{sale.points_redeemed > 0 ? `, ${sale.points_redeemed} used` : ''}</span></div>
+                )}
             </div>
             <div className="erp-actions">
                 <Button text="Print" icon="print" onClick={() => window.print()} />

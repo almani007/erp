@@ -14,6 +14,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('suppliers/{supplierId}/payments', [SupplierController::class, 'pay'])
         ->middleware(['permission:purchasing.payment.create', 'idempotent']);
 
+    Route::get('purchasing/reorder-suggestions', [PurchaseOrderController::class, 'reorderSuggestions'])->middleware('permission:purchasing.order.view');
     Route::get('purchase-orders', [PurchaseOrderController::class, 'index'])->middleware('permission:purchasing.order.view');
     Route::get('purchase-orders/{orderId}', [PurchaseOrderController::class, 'show'])->middleware('permission:purchasing.order.view');
     Route::post('purchase-orders', [PurchaseOrderController::class, 'store'])->middleware(['permission:purchasing.order.create', 'idempotent']);

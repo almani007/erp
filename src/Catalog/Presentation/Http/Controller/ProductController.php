@@ -14,7 +14,7 @@ final class ProductController
 {
     private const array RELATIONS = [
         'category:id,name', 'brand:id,name', 'baseUnit:id,name,abbreviation',
-        'taxCode:id,code,rate,type', 'barcodes:id,product_id,barcode,is_primary',
+        'taxCode:id,code,rate,type', 'barcodes:id,product_id,barcode,is_primary', 'units',
     ];
 
     public function index(Request $request): JsonResponse
@@ -24,6 +24,7 @@ final class ProductController
             'category_id' => ['nullable', 'uuid'],
             'status' => ['nullable', 'in:active,inactive,discontinued'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:1000'],
+            'parent_id' => ['nullable', 'uuid'],
         ]);
 
         $products = Product::query()
@@ -37,6 +38,8 @@ final class ProductController
             })
             ->when($q['category_id'] ?? null, fn ($b, $id) => $b->where('category_id', $id))
             ->when($q['status'] ?? null, fn ($b, $s) => $b->where('status', $s))
+            ->when($q['parent_id'] ?? null, fn ($b, $id) => $b->where('parent_id', $id))
+            ->withCount('children')
             ->orderBy('name')
             ->limit($q['limit'] ?? 500)
             ->get();
@@ -88,6 +91,14 @@ final class ProductController
             'track_serial' => ['sometimes', 'boolean'],
             'track_expiry' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string', 'max:2000'],
+            'wholesale_price' => ['sometimes', 'numeric', 'min:0', 'max:9999999999'],
+            'wholesale_min_qty' => ['sometimes', 'numeric', 'min:0'],
+            'pricing_mode' => ['sometimes', 'in:fixed,rate'],
+            'rate_code' => ['nullable', 'string', 'max:30', TenantRule::exists('market_rates', 'code')],
+            'weight' => ['nullable', 'numeric', 'gt:0'],
+            'making_charge' => ['sometimes', 'numeric', 'min:0'],
+            'wastage_percent' => ['sometimes', 'numeric', 'min:0', 'max:100'],
+            'purity' => ['nullable', 'string', 'max:30'],
             'barcodes' => ['sometimes', 'array', 'max:20'],
             'barcodes.*' => ['string', 'max:128'],
         ];

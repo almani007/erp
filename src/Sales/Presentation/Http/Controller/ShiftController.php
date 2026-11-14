@@ -10,9 +10,11 @@ use Illuminate\Validation\Rule;
 use Organization\Domain\Contract\BranchContext;
 use Organization\Domain\Exception\BranchAccessDenied;
 use Organization\Infrastructure\Persistence\Eloquent\Warehouse;
+use Sales\Application\LoyaltyProgram;
 use Sales\Application\ManageShift;
 use Sales\Infrastructure\Persistence\Eloquent\PosShift;
 use Sales\Infrastructure\Persistence\Eloquent\PosTerminal;
+use Shared\Domain\Contract\Settings;
 use Shared\Infrastructure\Validation\TenantRule;
 
 final class ShiftController
@@ -47,6 +49,15 @@ final class ShiftController
         $request->validate(['code' => [Rule::unique('pos_terminals', 'code')->where('branch_id', $data['branch_id'])]]);
 
         return new JsonResponse(['data' => PosTerminal::query()->create($data + ['status' => 'active'])], 201);
+    }
+
+    /** Settings the screens adapt to: the kind of business and the loyalty rates. */
+    public function config(LoyaltyProgram $loyalty, Settings $settings): JsonResponse
+    {
+        return new JsonResponse(['data' => [
+            'business_type' => (string) ($settings->get('business', 'type') ?? 'general'),
+            'loyalty' => $loyalty->config(),
+        ]]);
     }
 
     // ── Shifts ───────────────────────────────────────────────────

@@ -129,6 +129,34 @@ final class SaleFlowTest extends TestCase
         $this->postJson('/api/v1/pos/quote', ['lines' => [['product_id' => $cola->id, 'quantity' => 1]], 'coupon_code' => 'NOPE'])->assertStatus(422);
     }
 
+    public function test_wholesale_packs_and_market_rate_pricing(): void
+    {
+        $this->openShift();
+        $sugar = Product::query()->where('sku', 'GRO-004')->firstOrFail();   // retail 165, wholesale 152 from 10 kg
+        $cola = Product::query()->with('units')->where('sku', 'BEV-002')->firstOrFail(); // carton of 24 at 2280, 10% deal
+        $ring = Product::query()->where('sku', 'JWL-RING-001')->firstOrFail(); // 8.5 g × 38,000 + 6% wastage + 12,000 making
+
+        $quote = fn (array $body) => $this->postJson('/api/v1/pos/quote', $body)->assertOk()->json('data');
+
+        // Wholesale applies only at the wholesale tier and from the minimum quantity.
+        $this->assertSame('165.0000', $quote(['lines' => [['product_id' => $sugar->id, 'quantity' => 10]]])['lines'][0]['unit_price']);
+        $this->assertSame('152.0000', $quote(['lines' => [['product_id' => $sugar->id, 'quantity' => 10]], 'price_tier' => 'wholesale'])['lines'][0]['unit_price']);
+        $this->assertSame('165.0000', $quote(['lines' => [['product_id' => $sugar->id, 'quantity' => 9]], 'price_tier' => 'wholesale'])['lines'][0]['unit_price']);
+
+        // Jewellery is priced from today's rate; changing the rate changes the price.
+        $this->assertSame('354380.0000', $quote(['lines' => [['product_id' => $ring->id, 'quantity' => 1]]])['grand_total']);
+
+        // Selling one carton takes 24 units out of stock.
+        $carton = $cola->units->first();
+        $sale = $this->postJson('/api/v1/sales', [
+            'lines' => [['product_id' => $cola->id, 'unit_id' => $carton->id, 'quantity' => 1]],
+            'tenders' => [['method' => 'cash', 'amount' => 3000]],
+        ], ['Idempotency-Key' => (string) Str::uuid()])->assertCreated()->json('data');
+
+        $this->assertSame('2421.3600', $sale['grand_total']); // (2280 − 10%) + 18%
+        $this->assertEquals(76, DB::table('stock_balances')->where('product_id', $cola->id)->value('on_hand'));
+    }
+
     public function test_posted_journal_lines_cannot_be_changed_or_deleted(): void
     {
         $line = DB::table('journal_lines')->first(); // from the seeded opening stock

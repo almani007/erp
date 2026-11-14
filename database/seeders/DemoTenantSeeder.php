@@ -6,9 +6,11 @@ namespace Database\Seeders;
 
 use Catalog\Infrastructure\Persistence\Eloquent\BranchPrice;
 use Catalog\Infrastructure\Persistence\Eloquent\Coupon;
+use Catalog\Infrastructure\Persistence\Eloquent\MarketRate;
 use Catalog\Infrastructure\Persistence\Eloquent\Product;
 use Catalog\Infrastructure\Persistence\Eloquent\ProductBarcode;
 use Catalog\Infrastructure\Persistence\Eloquent\ProductCategory;
+use Catalog\Infrastructure\Persistence\Eloquent\ProductUnit;
 use Catalog\Infrastructure\Persistence\Eloquent\PromotionItem;
 use Catalog\Infrastructure\Persistence\Eloquent\PromotionRule;
 use Catalog\Infrastructure\Persistence\Eloquent\TaxCode;
@@ -28,6 +30,7 @@ use Organization\Infrastructure\Persistence\Eloquent\Warehouse;
 use Purchasing\Infrastructure\Persistence\Eloquent\Supplier;
 use Sales\Infrastructure\Persistence\Eloquent\Customer;
 use Sales\Infrastructure\Persistence\Eloquent\PosTerminal;
+use Shared\Domain\Contract\Settings;
 use Shared\Domain\Contract\TenantContext;
 
 /**
@@ -83,12 +86,13 @@ final class DemoTenantSeeder extends Seeder
                 'status' => 'active',
             ]);
 
-            foreach ([['Ali Traders', '0300-1111111', '50000'], ['Sana Khan', '0301-2222222', '10000'], ['Karachi Caterers', '0302-3333333', '150000']] as $i => [$name, $phone, $limit]) {
+            foreach ([['Ali Traders (wholesale)', '0300-1111111', '50000', 'wholesale'], ['Sana Khan', '0301-2222222', '10000', 'retail'], ['Karachi Caterers', '0302-3333333', '150000', 'wholesale']] as $i => [$name, $phone, $limit, $tier]) {
                 Customer::query()->create([
                     'customer_code' => sprintf('CUS-%06d', $i + 1),
                     'name' => $name,
                     'phone' => $phone,
                     'credit_limit' => $limit,
+                    'price_tier' => $tier,
                     'status' => 'active',
                 ]);
             }
@@ -111,9 +115,18 @@ final class DemoTenantSeeder extends Seeder
             // Opening stock goes through the real posting path, so the stock
             // ledger and the general ledger start out in agreement.
             app(PostStockAdjustment::class)->execute($mainWarehouse, 'opening_balance', 'Demo opening stock', array_map(
-                static fn (Product $p): array => ['product_id' => $p->id, 'qty_delta' => '100', 'unit_cost' => (string) $p->cost_price],
+                static fn (Product $p): array => [
+                    'product_id' => $p->id,
+                    'qty_delta' => $p->pricing_mode === 'rate' && $p->weight !== null ? '3' : '100', // a few pieces of jewellery, plenty of everything else
+                    'unit_cost' => (string) $p->cost_price,
+                ],
                 $products,
             ));
+
+            // Loyalty: 1 point per 100 spent, each point worth 1.
+            app(Settings::class)->set('loyalty', 'earn_per_amount', '100');
+            app(Settings::class)->set('loyalty', 'point_value', '1');
+            app(Settings::class)->set('business', 'type', 'general'); // shows every trade's fields
         });
     }
 
@@ -195,6 +208,7 @@ final class DemoTenantSeeder extends Seeder
             ['5010', 'Cost of Goods Sold', 'expense', 'cost_of_goods_sold'],
             ['5100', 'Inventory Adjustments', 'expense', 'inventory_adjustment'],
             ['5110', 'Cash Over / Short', 'expense', 'cash_over_short'],
+            ['5120', 'Loyalty Redemptions', 'expense', 'loyalty_redemption'],
             ['5200', 'Salaries & Wages', 'expense', null],
             ['5300', 'Rent', 'expense', null],
             ['5400', 'Utilities', 'expense', null],
@@ -240,12 +254,12 @@ final class DemoTenantSeeder extends Seeder
         $exempt = TaxCode::query()->create(['code' => 'EXEMPT', 'name' => 'Exempt / Zero rated', 'rate' => '0', 'type' => 'exclusive', 'status' => 'active']);
 
         $units = [];
-        foreach (['pc' => 'Piece', 'kg' => 'Kilogram', 'l' => 'Litre', 'pk' => 'Pack'] as $abbr => $name) {
+        foreach (['pc' => 'Piece', 'kg' => 'Kilogram', 'l' => 'Litre', 'pk' => 'Pack', 'g' => 'Gram'] as $abbr => $name) {
             $units[$abbr] = Unit::query()->create(['name' => $name, 'abbreviation' => $abbr, 'is_base' => true]);
         }
 
         $categories = [];
-        foreach (['Groceries', 'Beverages', 'Dairy', 'Household', 'Personal Care'] as $i => $name) {
+        foreach (['Groceries', 'Beverages', 'Dairy', 'Household', 'Personal Care', 'Garments', 'Jewellery', 'Bartan'] as $i => $name) {
             $categories[$name] = ProductCategory::query()->create(['name' => $name, 'slug' => Str::slug($name), 'sort_order' => $i, 'status' => 'active']);
         }
 
@@ -286,6 +300,58 @@ final class DemoTenantSeeder extends Seeder
 
             $products[] = $product;
         }
+
+        // ── One example per trade ────────────────────────────────
+
+        // Wholesale: sugar has a wholesale price from 10 kg, and cola also sells by the carton.
+        collect($products)->firstWhere('sku', 'GRO-004')->update(['wholesale_price' => '152', 'wholesale_min_qty' => '10']);
+        $cola = collect($products)->firstWhere('sku', 'BEV-002');
+        ProductUnit::query()->create(['product_id' => $cola->id, 'name' => 'Carton (24)', 'factor' => '24', 'price' => '2280', 'wholesale_price' => '2160', 'barcode' => '18964000200022']);
+
+        // Garments: a style with size/colour variants, each its own SKU and stock.
+        $style = Product::query()->create([
+            'sku' => 'GAR-KURTA', 'name' => 'Cotton Kurta', 'product_type' => 'goods', 'base_unit_id' => $units['pc']->id,
+            'category_id' => $categories['Garments']->id, 'tax_code_id' => $gst->id, 'cost_price' => '1400', 'sale_price' => '2200',
+            'wholesale_price' => '1850', 'wholesale_min_qty' => '6', 'reorder_level' => '5', 'status' => 'inactive',
+        ]);
+        foreach (['S', 'M', 'L'] as $size) {
+            foreach (['White', 'Navy'] as $colour) {
+                $products[] = Product::query()->create([
+                    'sku' => strtoupper("GAR-KURTA-{$size}-{$colour}"), 'name' => "Cotton Kurta — {$size} / {$colour}",
+                    'product_type' => 'goods', 'base_unit_id' => $units['pc']->id, 'category_id' => $categories['Garments']->id,
+                    'tax_code_id' => $gst->id, 'cost_price' => '1400', 'sale_price' => '2200', 'wholesale_price' => '1850',
+                    'wholesale_min_qty' => '6', 'reorder_level' => '5', 'status' => 'active',
+                    'parent_id' => $style->id, 'variant_attributes' => ['Size' => $size, 'Colour' => $colour],
+                ]);
+            }
+        }
+
+        // Rates are examples — enter the real rate of the day before selling.
+        MarketRate::query()->create(['code' => 'GOLD-22K', 'name' => 'Gold 22 karat', 'per_unit' => 'gram', 'rate' => '38000']);
+        MarketRate::query()->create(['code' => 'STEEL', 'name' => 'Stainless steel bartan', 'per_unit' => 'kg', 'rate' => '1450']);
+
+        // Jewellery: a piece priced from the gold rate — 8.5 g, 6% wastage, making charge on top.
+        $products[] = Product::query()->create([
+            'sku' => 'JWL-RING-001', 'name' => 'Gold Ring 22K (8.5 g)', 'product_type' => 'goods', 'base_unit_id' => $units['pc']->id,
+            'category_id' => $categories['Jewellery']->id, 'tax_code_id' => $exempt->id, 'cost_price' => '330000', 'sale_price' => '0',
+            'pricing_mode' => 'rate', 'rate_code' => 'GOLD-22K', 'weight' => '8.5', 'wastage_percent' => '6', 'making_charge' => '12000',
+            'purity' => '22K', 'reorder_level' => '0', 'status' => 'active',
+        ]);
+
+        // Bartan sold by weight: the quantity on the sale is the weight in kg.
+        $products[] = Product::query()->create([
+            'sku' => 'BRT-STEEL-KG', 'name' => 'Steel Bartan (by weight)', 'product_type' => 'goods', 'base_unit_id' => $units['kg']->id,
+            'category_id' => $categories['Bartan']->id, 'tax_code_id' => $gst->id, 'cost_price' => '1150', 'sale_price' => '0',
+            'pricing_mode' => 'rate', 'rate_code' => 'STEEL', 'reorder_level' => '25', 'status' => 'active',
+        ]);
+        // …and bartan sold by the piece, with a set (dozen) price for wholesale.
+        $glass = Product::query()->create([
+            'sku' => 'BRT-GLASS', 'name' => 'Steel Glass', 'product_type' => 'goods', 'base_unit_id' => $units['pc']->id,
+            'category_id' => $categories['Bartan']->id, 'tax_code_id' => $gst->id, 'cost_price' => '160', 'sale_price' => '240',
+            'wholesale_price' => '200', 'wholesale_min_qty' => '12', 'reorder_level' => '24', 'status' => 'active',
+        ]);
+        ProductUnit::query()->create(['product_id' => $glass->id, 'name' => 'Dozen', 'factor' => '12', 'price' => '2640', 'wholesale_price' => '2340']);
+        $products[] = $glass;
 
         return $products;
     }

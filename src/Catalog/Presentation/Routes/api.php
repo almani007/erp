@@ -6,6 +6,7 @@ use Catalog\Presentation\Http\Controller\BarcodeController;
 use Catalog\Presentation\Http\Controller\MasterDataController;
 use Catalog\Presentation\Http\Controller\PricingController;
 use Catalog\Presentation\Http\Controller\ProductController;
+use Catalog\Presentation\Http\Controller\TradeController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function (): void {
@@ -48,4 +49,14 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('coupons', [PricingController::class, 'coupons'])->middleware($view);
     Route::post('coupons', [PricingController::class, 'storeCoupon'])->middleware($pricing);
     Route::put('coupons/{couponId}', [PricingController::class, 'updateCoupon'])->middleware($pricing);
+
+    Route::get('products/{productId}/units', [TradeController::class, 'units'])->middleware($view)->whereUuid('productId');
+    Route::post('products/{productId}/units', [TradeController::class, 'storeUnit'])->middleware($manage)->whereUuid('productId');
+    Route::put('products/{productId}/units/{unitId}', [TradeController::class, 'updateUnit'])->middleware($manage)->whereUuid('productId');
+    Route::delete('products/{productId}/units/{unitId}', [TradeController::class, 'destroyUnit'])->middleware($manage)->whereUuid('productId');
+    Route::post('products/{productId}/variants', [TradeController::class, 'generateVariants'])->middleware($manage)->whereUuid('productId');
+
+    Route::get('market-rates', [TradeController::class, 'rates'])->middleware($view);
+    Route::post('market-rates', [TradeController::class, 'storeRate'])->middleware($pricing);
+    Route::put('market-rates/{rateId}', [TradeController::class, 'updateRate'])->middleware($pricing);
 });

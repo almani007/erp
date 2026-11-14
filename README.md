@@ -29,6 +29,22 @@ builds the frontend, runs the migrations and seeds a demo tenant. It is safe to 
 | PostgreSQL | localhost:35432 (`erp_app` / `erp_app_password`) |
 | Redis | localhost:36379 |
 
+## One system for different trades
+
+Retail and wholesale work side by side everywhere. The business profile (Administration →
+Business & branches) only decides which fields are shown; it never changes behaviour.
+
+| Trade | What it uses |
+|---|---|
+| Grocery / supermarket | Barcodes, loose items sold by weight (decimal quantities), cartons and packs, deals and coupons, reorder suggestions |
+| Garments / footwear | A style with size / colour variants — each variant has its own SKU, barcode and stock; wholesale price from a minimum quantity |
+| Gold / jewellery | Price from the day's market rate: weight × rate + wastage % + making charge, with purity recorded; every rate change is audited |
+| Bartan / crockery | Sold by the piece, by the dozen/set (packs), or by weight at the day's metal rate |
+| Wholesale / distribution | Wholesale price tier per customer or per sale, minimum quantities, pack prices, customer credit limits and account payments |
+
+Not built for these trades yet: expiry / batch tracking (grocery, pharmacy), old-gold exchange and
+stone details (jewellery), a size-colour stock matrix view (garments), and route / van sales (distribution).
+
 Demo logins (created only when `APP_ENV` is not `production`; change them after first login):
 
 | User | Password | Role |
@@ -36,7 +52,10 @@ Demo logins (created only when `APP_ENV` is not `production`; change them after 
 | admin@brixelltd.com | `BrixelAdmin2026!` | tenant owner, all branches |
 | cashier@brixelltd.com | `BrixelCashier2026!` | cashier, Head Office only |
 
-The demo tenant has a running 10% beverage deal, the coupon `WELCOME5`, and a branch price for sugar at the Gulshan branch.
+The demo tenant has one example per trade (a kurta in six size/colour variants, a 22K gold ring priced
+from the gold rate, steel bartan by weight, cola by the carton, sugar with a wholesale price), a running
+10% beverage deal, the coupon `WELCOME5`, loyalty at 1 point per 100 spent, and two wholesale customers.
+The gold and steel rates are placeholders — enter the real rate of the day before selling.
 
 ## Current status
 
@@ -53,24 +72,24 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | Organization | wired | Tenants, companies, branches, warehouses, settings, gap-free document numbers |
 | Identity | wired | Token login, users, seeded roles and permissions, branch grants, append-only audit log |
 | Integration | wired | `Idempotency-Key` middleware, transactional outbox table (events are recorded, not yet published) |
-| Catalog | wired | Products, barcodes, categories, brands, units, tax codes, branch-wise prices, deals (percent / amount off, by product, category or branch, time-bound), coupons, server-side price and tax quote |
-| Inventory | wired | Append-only stock ledger, weighted-average cost, adjustments with journal, warehouse transfers |
-| Finance | wired | Chart of accounts, posting-account mapping, periods, immutable double-entry journals, reversal, trial balance, P&L, balance sheet, general ledger |
-| Sales | wired | Customers, credit limits and account payments, terminals, shifts with cash reconciliation and cash in/out, POS sale with deals and coupons, hold/resume, void, partial returns and refunds, price checker |
-| Purchasing | wired | Suppliers, purchase orders with maker-checker approval, full or partial goods receipts into stock, supplier payments |
-| Reporting | wired | Dashboard: sales, margin, stock, receivables, payables, payment mix, low stock |
+| Catalog | wired | Products, barcodes, categories, brands, units, tax codes, branch-wise prices, deals (percent / amount off, by product, category or branch, time-bound), coupons, wholesale prices, packs (carton, dozen), size / colour variants, market-rate pricing (gold, silver, steel), server-side price and tax quote |
+| Inventory | wired | Append-only stock ledger, weighted-average cost, adjustments with journal, warehouse transfers, physical stock counts |
+| Finance | wired | Chart of accounts, posting-account mapping, periods, immutable double-entry journals, reversal, expense and income vouchers, trial balance, P&L, balance sheet, general ledger |
+| Sales | wired | Customers, credit limits and account payments, terminals, shifts with cash reconciliation and cash in/out, POS sale with deals and coupons, retail / wholesale tier, selling in packs, loyalty points (earn and redeem), hold/resume, void, partial returns and refunds, price checker |
+| Purchasing | wired | Suppliers, purchase orders with maker-checker approval, full or partial goods receipts into stock, supplier payments, reorder suggestions that raise a draft order |
+| Reporting | wired | Dashboard; drag-and-drop pivot analysis of sales by branch, cashier, category, product, customer, tier, day and hour |
 | Production, CRM | partial, **not wired** | Unreviewed scaffolding from an earlier pass; no routes, not registered in `bootstrap/providers.php` |
 | People, Payroll, Order management, Delivery, Workflow, SaaS admin, offline POS sync | not started | — |
 
 Known gaps inside the wired modules: supplier-invoice matching (the liability is booked at
 receipt, at order prices), supplier advances and purchase returns, buy-X-get-Y and stacked
-deals, batch/serial/expiry tracking, stock counts, partial transfer receipts, inter-company
+deals, batch/serial/expiry tracking, partial transfer receipts, inter-company
 transfers, journals for cash paid-in/paid-out, per-tenant custom roles, MFA, webhook delivery,
 and server-side paging (lists are capped, typically at 500–1000 rows). Held POS sales are kept
 in the browser of the terminal, not on the server.
 
 Benchmark features still to build (from the SRS list of Technosys public capabilities):
-loyalty points, salesperson commissions, quotations and sales orders, delivery and riders,
+salesperson commissions, quotations and sales orders, delivery and riders,
 restaurant tables / kitchen display / reservations, online store, feedback (Feedo-style),
 tasks and approval workflows (CAN-DO-style), HR and payroll, production and recipes,
 FBR e-invoicing, offline POS sync.

@@ -11,6 +11,7 @@ use Identity\Infrastructure\Provider\IdentityServiceProvider;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Organization\Infrastructure\Persistence\Eloquent\Tenant;
 
 final class AuthController
@@ -50,6 +51,27 @@ final class AuthController
         $request->user()->currentAccessToken()->delete();
 
         return new JsonResponse(['data' => ['logged_out' => true]]);
+    }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', Password::min(10), 'different:current_password'],
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($data['current_password'], $user->password)) {
+            throw new \DomainException('Your current password is not correct.');
+        }
+
+        $user->forceFill(['password' => $data['password']])->save();
+
+        // Sign out every other device; keep this session.
+        $user->tokens()->whereKeyNot($user->currentAccessToken()->getKey())->delete();
+
+        return new JsonResponse(['data' => ['changed' => true]]);
     }
 
     public function me(Request $request): JsonResponse

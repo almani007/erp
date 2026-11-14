@@ -14,7 +14,8 @@ final class SaveProduct
     private const array FIELDS = [
         'sku', 'name', 'product_type', 'base_unit_id', 'category_id', 'brand_id', 'tax_code_id',
         'track_batch', 'track_serial', 'track_expiry', 'sale_price', 'cost_price', 'reorder_level',
-        'status', 'description',
+        'status', 'description', 'wholesale_price', 'wholesale_min_qty', 'pricing_mode', 'rate_code', 'weight',
+        'making_charge', 'wastage_percent', 'purity',
     ];
 
     /**
@@ -32,13 +33,19 @@ final class SaveProduct
                 $attributes['sku'] = strtoupper(trim((string) $attributes['sku']));
             }
 
-            $product->fill($attributes)->save();
+            $product->fill($attributes);
+
+            if ($product->pricing_mode === 'rate' && empty($product->rate_code)) {
+                throw new \DomainException('Choose the market rate this product is priced from.');
+            }
+
+            $product->save();
 
             if (array_key_exists('barcodes', $data)) {
                 $this->syncBarcodes($product, array_values(array_unique(array_filter(array_map('trim', $data['barcodes'])))));
             }
 
-            return $product->load(['category:id,name', 'brand:id,name', 'baseUnit:id,name,abbreviation', 'taxCode:id,code,rate,type', 'barcodes:id,product_id,barcode,is_primary']);
+            return $product->load(['category:id,name', 'brand:id,name', 'baseUnit:id,name,abbreviation', 'taxCode:id,code,rate,type', 'barcodes:id,product_id,barcode,is_primary', 'units']);
         });
     }
 

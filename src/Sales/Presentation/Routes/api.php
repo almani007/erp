@@ -18,6 +18,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('customers/{customerId}/payments', [CustomerController::class, 'receivePayment'])
         ->middleware(['permission:sales.payment.receive', 'idempotent']);
 
+    Route::post('customers/{customerId}/loyalty-adjustments', [CustomerController::class, 'adjustLoyalty'])->middleware('permission:sales.customer.manage');
+
+    // Any signed-in user: the screens need it to decide what to show.
+    Route::get('app-config', [ShiftController::class, 'config']);
     Route::get('pos/terminals', [ShiftController::class, 'terminals'])->middleware($sell);
     Route::post('pos/terminals', [ShiftController::class, 'storeTerminal'])->middleware('permission:sales.shift.manage');
 

@@ -25,7 +25,7 @@ final class Sale extends Model
         'company_id', 'branch_id', 'warehouse_id', 'terminal_id', 'shift_id', 'cashier_id', 'customer_id',
         'sale_no', 'status', 'currency', 'subtotal', 'discount_total', 'tax_total', 'grand_total',
         'paid_total', 'change_total', 'cost_total', 'journal_entry_id', 'idempotency_key', 'sold_at',
-        'voided_at', 'voided_by', 'void_reason', 'coupon_code',
+        'voided_at', 'voided_by', 'void_reason', 'coupon_code', 'points_earned', 'points_redeemed', 'price_tier',
     ];
 
     protected function casts(): array
