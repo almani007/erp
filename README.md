@@ -124,6 +124,16 @@ less at the receipt price (the gap to price variance), and an already-billed inv
 drops. Payments are applied to the bills due first, or to the bills chosen. Aging by due date
 (plus goods received but not yet billed) and supplier statements print like customer ones.
 
+### Fixed assets
+
+Finance → Fixed assets. Categories set the default method (straight line over a life in months,
+or reducing balance at an annual rate) and residual value %. An asset is registered as paid from
+bank or cash, owed to a supplier, or brought in as an existing asset with depreciation already
+charged up to a date; each posts its journal. Monthly depreciation is previewed, then posted as
+one journal (expense by branch against accumulated depreciation); missed months are caught up,
+the same month cannot be charged twice, and only the latest run can be reversed. Each asset's
+card projects its remaining depreciation. Selling or writing off posts the gain or loss.
+
 ### HR and payroll
 
 Finance → HR & payroll. Employees (monthly salary or daily wage, named allowances and
@@ -184,6 +194,7 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | Production | wired | Recipes / bills of materials with wastage, production orders (plan, complete with actual usage and overheads, cancel), recipe items that consume ingredients on sale |
 | CRM | partial, **not wired** | Unreviewed scaffolding from an earlier pass; no routes, not registered in `bootstrap/providers.php` |
 | People (HR & payroll) | wired | Employees, attendance register, advances and loans, monthly payroll with maker-checker approval, journals, payslips |
+| Fixed assets | wired | Asset register, categories, straight-line and reducing-balance depreciation runs with reversal, disposal with gain/loss |
 | Payables | wired | Supplier bills matched to goods receipts with variance tolerance, expense bills, debit notes, payments allocated to bills, aging, statements |
 | Sales documents | wired | Quotations, sales orders, partial invoicing on credit terms, receipts allocated to invoices, aging, statements, A4 printing |
 | Order management (delivery notes, stock reservation), Delivery, Workflow, billing for SaaS plans, offline POS sync | not started | — |

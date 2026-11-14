@@ -36,7 +36,8 @@ final class ProvisionTenant
         ['1150', 'Employee Advances & Loans', 'asset', 'employee_advances'],
         ['1200', 'Inventory', 'asset', 'inventory'],
         ['1300', 'Input Tax Receivable', 'asset', 'purchase_tax_receivable'],
-        ['1500', 'Fixed Assets', 'asset', null],
+        ['1500', 'Fixed Assets', 'asset', 'fixed_assets'],
+        ['1590', 'Accumulated Depreciation', 'asset', 'accumulated_depreciation'],
         ['2010', 'Accounts Payable', 'liability', 'accounts_payable'],
         ['2100', 'Sales Tax Payable', 'liability', 'sales_tax_payable'],
         ['2200', 'Accrued Liabilities', 'liability', null],
@@ -47,6 +48,7 @@ final class ProvisionTenant
         ['3900', 'Opening Balance Equity', 'equity', 'opening_balance_equity'],
         ['4010', 'Sales Revenue', 'revenue', 'sales_revenue'],
         ['4900', 'Other Income', 'revenue', null],
+        ['4950', 'Gain / Loss on Asset Disposal', 'revenue', 'asset_disposal'],
         ['5010', 'Cost of Goods Sold', 'expense', 'cost_of_goods_sold'],
         ['5100', 'Inventory Adjustments', 'expense', 'inventory_adjustment'],
         ['5110', 'Cash Over / Short', 'expense', 'cash_over_short'],
@@ -56,6 +58,7 @@ final class ProvisionTenant
         ['5250', 'Production Costs Applied', 'expense', 'production_overhead'],
         ['5300', 'Rent', 'expense', null],
         ['5400', 'Utilities', 'expense', null],
+        ['5600', 'Depreciation Expense', 'expense', 'depreciation_expense'],
     ];
 
     public function __construct(

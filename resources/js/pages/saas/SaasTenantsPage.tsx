@@ -28,6 +28,7 @@ export const MODULES: { key: ModuleName; label: string }[] = [
     { key: 'records', label: 'Custom records' },
     { key: 'production', label: 'Recipes & production' },
     { key: 'people', label: 'HR & payroll' },
+    { key: 'assets', label: 'Fixed assets' },
 ];
 
 interface PlanState { modules: Record<string, boolean>; features: Record<string, boolean>; max_users: number | null; max_branches: number | null }

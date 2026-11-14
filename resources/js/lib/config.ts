@@ -45,7 +45,7 @@ export const BUSINESS_TYPES: { id: string; name: string; features: Features }[] 
     { id: 'rental', name: 'Rental & hire', features: { ...all(false), serials: true } },
 ];
 
-export type ModuleName = 'sales' | 'catalog' | 'inventory' | 'purchasing' | 'finance' | 'reporting' | 'records' | 'production' | 'people';
+export type ModuleName = 'sales' | 'catalog' | 'inventory' | 'purchasing' | 'finance' | 'reporting' | 'records' | 'production' | 'people' | 'assets';
 
 export interface AppConfig {
     business_type: string;

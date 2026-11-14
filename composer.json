@@ -50,6 +50,7 @@
             "Payroll\\": "src/Payroll/",
             "Saas\\": "src/Saas/",
             "Records\\": "src/Records/",
+            "Assets\\": "src/Assets/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         }

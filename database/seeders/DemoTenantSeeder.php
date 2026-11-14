@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use Assets\Application\ManageFixedAssets;
+use Assets\Infrastructure\Persistence\Eloquent\AssetCategory;
 use Catalog\Infrastructure\Persistence\Eloquent\BranchPrice;
 use Catalog\Infrastructure\Persistence\Eloquent\Coupon;
 use Catalog\Infrastructure\Persistence\Eloquent\MarketRate;
@@ -115,6 +117,7 @@ final class DemoTenantSeeder extends Seeder
             $this->pricing($company, $gulshan, $products);
 
             $this->people($company, $headOffice, $gulshan);
+            $this->assets($company, $headOffice, $gulshan);
 
             // Opening stock goes through the real posting path, so the stock
             // ledger and the general ledger start out in agreement.
@@ -205,6 +208,36 @@ final class DemoTenantSeeder extends Seeder
     {
         // Same starter chart, posting accounts and periods every provisioned tenant gets.
         app(ProvisionTenant::class)->chartOfAccounts($company);
+    }
+
+    /** Asset categories and a few assets brought in with depreciation already charged. */
+    private function assets(Company $company, Branch $headOffice, Branch $gulshan): void
+    {
+        $categories = [];
+        foreach ([
+            ['Furniture & fixtures', 'straight_line', 120, null, '0'],
+            ['Computers & POS hardware', 'straight_line', 36, null, '5'],
+            ['Vehicles', 'reducing_balance', null, '15', '10'],
+            ['Plant & machinery', 'straight_line', 120, null, '5'],
+        ] as [$name, $method, $life, $rate, $residual]) {
+            $categories[$name] = AssetCategory::query()->create([
+                'name' => $name, 'method' => $method, 'useful_life_months' => $life, 'rate_percent' => $rate, 'residual_percent' => $residual, 'status' => 'active',
+            ]);
+        }
+
+        $adminId = (string) User::query()->where('email', 'admin@brixelltd.com')->value('id');
+        $lastMonthEnd = now()->subMonthNoOverflow()->endOfMonth()->toDateString();
+        foreach ([
+            ['Computers & POS hardware', 'POS terminal with printer and scanner', $headOffice, '185000', 12, '58583.33'],
+            ['Furniture & fixtures', 'Display racks and counters', $headOffice, '650000', 18, '97500'],
+            ['Vehicles', 'Suzuki Ravi delivery pickup', $gulshan, '2350000', 24, '625000'],
+        ] as [$category, $name, $branch, $cost, $monthsAgo, $opening]) {
+            app(ManageFixedAssets::class)->register($company->id, [
+                'category_id' => $categories[$category]->id, 'name' => $name, 'branch_id' => $branch->id,
+                'purchase_date' => now()->subMonthsNoOverflow($monthsAgo)->startOfMonth()->toDateString(),
+                'cost' => $cost, 'opening_depreciation' => $opening, 'depreciated_to' => $lastMonthEnd, 'funding' => 'opening',
+            ], $adminId);
+        }
     }
 
     /** Four staff on monthly and daily pay, with one salary advance being recovered. */
