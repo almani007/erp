@@ -92,12 +92,24 @@ materials for a quantity of a product, with wastage %. It is used one of two way
 Demo: *Doodh Patti Chai (cup)* uses milk, tea and sugar when sold; *Sweet Lassi* is produced in
 batches of 10 from yogurt and sugar.
 
+### HR and payroll
+
+Finance → HR & payroll. Employees (monthly salary or daily wage, named allowances and
+deductions such as house rent or EOBI, monthly tax withheld, bank account, branch), a daily
+attendance register with overtime, salary advances and loans recovered in installments, and a
+monthly payroll that calculates from all of these. Lines can be adjusted (absent days, overtime,
+bonus, tax, other deductions, advance recovery) before approval; approval needs a second person
+(the owner excepted) and posts salaries expense against salaries payable, deductions payable and
+advances; payment posts salaries payable against cash or bank. Printable payslips. The rules are
+settings (`payroll.month_days` 30, `payroll.hours_per_day` 8, `payroll.overtime_rate` 1). Income
+tax is entered per employee, not computed from tax slabs; leave balances are not tracked yet.
+
 **What this does and does not cover.** Custom records capture data and track status; they do
 not run process logic. A restaurant now has recipe-based stock, but no table plan, modifiers or
 kitchen display; production has no routing, work centres or multi-level BOMs (a sub-assembly
 must be produced first); a rental business can track agreements, but rent is not invoiced on a
 schedule.
-HR and payroll calculation is not built. Also still missing within the retail trades: a
+Also still missing within the retail trades: a
 size-colour stock matrix view, route / van sales, and stock-level serial tracking.
 
 Demo logins (created only when `APP_ENV` is not `production`; change them after first login):
@@ -139,7 +151,8 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | SaaS | wired | Platform admin: provision businesses, plans (modules, features, user and branch limits), suspend / reactivate, business templates |
 | Production | wired | Recipes / bills of materials with wastage, production orders (plan, complete with actual usage and overheads, cancel), recipe items that consume ingredients on sale |
 | CRM | partial, **not wired** | Unreviewed scaffolding from an earlier pass; no routes, not registered in `bootstrap/providers.php` |
-| People, Payroll, Order management, Delivery, Workflow, billing for SaaS plans, offline POS sync | not started | — |
+| People (HR & payroll) | wired | Employees, attendance register, advances and loans, monthly payroll with maker-checker approval, journals, payslips |
+| Order management, Delivery, Workflow, billing for SaaS plans, offline POS sync | not started | — |
 
 Known gaps inside the wired modules: supplier-invoice matching (the liability is booked at
 receipt, at order prices), supplier advances and purchase returns, buy-X-get-Y and stacked
@@ -151,7 +164,7 @@ in the browser of the terminal, not on the server.
 Benchmark features still to build (from the SRS list of Technosys public capabilities):
 salesperson commissions, quotations and sales orders, delivery and riders,
 restaurant tables / kitchen display / reservations, online store, feedback (Feedo-style),
-tasks and approval workflows (CAN-DO-style), HR and payroll,
+tasks and approval workflows (CAN-DO-style), leave management and tax-slab calculation,
 FBR e-invoicing, offline POS sync.
 
 ## Architecture

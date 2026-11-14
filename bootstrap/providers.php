@@ -19,6 +19,7 @@ return [
     Purchasing\Infrastructure\Provider\PurchasingServiceProvider::class,
     Reporting\Infrastructure\Provider\ReportingServiceProvider::class,
     Production\Infrastructure\Provider\ProductionServiceProvider::class,
+    People\Infrastructure\Provider\PeopleServiceProvider::class,
     Records\Infrastructure\Provider\RecordsServiceProvider::class,
     Saas\Infrastructure\Provider\SaasServiceProvider::class,
 ];

@@ -194,3 +194,6 @@ a { color: var(--erp-primary); text-decoration: none; }
     .erp-receipt, .erp-receipt * { visibility: visible; }
     .erp-receipt { position: absolute; left: 0; top: 0; width: 80mm; padding: 4mm; font-size: 12px; }
 }
+
+/* Emphasised grid cell, e.g. net pay. */
+.erp-strong { font-weight: 600; }

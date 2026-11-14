@@ -45,6 +45,9 @@ final class RolesAndPermissionsSeeder extends Seeder
         'records.view', 'records.manage',
 
         'production.view', 'production.recipe.manage', 'production.order.manage',
+
+        'people.employee.view', 'people.employee.manage', 'people.attendance.manage',
+        'people.payroll.manage', 'people.payroll.approve',
     ];
 
     /** `tenant_owner` is granted everything through Gate::before, not listed grants. */
@@ -56,11 +59,13 @@ final class RolesAndPermissionsSeeder extends Seeder
             'sales.sale.view', 'sales.customer.view', 'sales.payment.receive', 'inventory.stock.view', 'catalog.product.view',
             'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.order.approve', 'purchasing.payment.create',
             'identity.audit.view', 'reporting.dashboard.view', 'reporting.analytics.view',
+            'people.employee.view', 'people.payroll.approve',
         ],
         'accountant' => [
             'organization.company.view', 'finance.account.view', 'finance.journal.view', 'finance.journal.create',
             'finance.voucher.create', 'finance.report.view', 'sales.sale.view', 'sales.customer.view', 'sales.payment.receive',
             'purchasing.supplier.view', 'purchasing.order.view', 'reporting.dashboard.view',
+            'people.employee.view', 'people.payroll.manage',
         ],
         'branch_manager' => [
             'catalog.product.view', 'catalog.product.manage', 'catalog.master.manage', 'catalog.pricing.manage',
@@ -70,6 +75,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.order.create', 'purchasing.receipt.create',
             'reporting.dashboard.view', 'reporting.analytics.view', 'records.view', 'records.manage',
             'production.view', 'production.recipe.manage', 'production.order.manage',
+            'people.employee.view', 'people.attendance.manage',
         ],
         'inventory_controller' => [
             'catalog.product.view', 'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage',

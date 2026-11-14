@@ -26,6 +26,8 @@ use Organization\Infrastructure\Persistence\Eloquent\CustomField;
 use Organization\Infrastructure\Persistence\Eloquent\Tenant;
 use Organization\Infrastructure\Persistence\Eloquent\Warehouse;
 use Purchasing\Infrastructure\Persistence\Eloquent\Supplier;
+use People\Application\GiveAdvance;
+use People\Infrastructure\Persistence\Eloquent\Employee;
 use Production\Infrastructure\Persistence\Eloquent\Recipe;
 use Saas\Application\ProvisionTenant;
 use Sales\Infrastructure\Persistence\Eloquent\Customer;
@@ -111,6 +113,8 @@ final class DemoTenantSeeder extends Seeder
             DB::table('document_sequences')->insert(['tenant_id' => $tenant->id, 'type' => 'supplier', 'scope' => $tenant->id, 'current_value' => 3]);
 
             $this->pricing($company, $gulshan, $products);
+
+            $this->people($company, $headOffice, $gulshan);
 
             // Opening stock goes through the real posting path, so the stock
             // ledger and the general ledger start out in agreement.
@@ -199,6 +203,33 @@ final class DemoTenantSeeder extends Seeder
     {
         // Same starter chart, posting accounts and periods every provisioned tenant gets.
         app(ProvisionTenant::class)->chartOfAccounts($company);
+    }
+
+    /** Four staff on monthly and daily pay, with one salary advance being recovered. */
+    private function people(Company $company, Branch $headOffice, Branch $gulshan): void
+    {
+        $staff = [
+            ['EMP-001', 'Imran Qureshi', 'Store Manager', 'Management', $headOffice, 'monthly', '85000', [['name' => 'House rent', 'amount' => '20000'], ['name' => 'Conveyance', 'amount' => '5000']], '2500'],
+            ['EMP-002', 'Ayesha Siddiqui', 'Cashier', 'Sales', $headOffice, 'monthly', '42000', [['name' => 'Conveyance', 'amount' => '3000']], '0'],
+            ['EMP-003', 'Bilal Ahmed', 'Cashier', 'Sales', $gulshan, 'monthly', '40000', [['name' => 'Conveyance', 'amount' => '3000']], '0'],
+            ['EMP-004', 'Rashid Khan', 'Loader', 'Warehouse', $headOffice, 'daily', '1600', [], '0'],
+        ];
+
+        $employees = [];
+        foreach ($staff as [$code, $name, $designation, $department, $branch, $payType, $basic, $allowances, $tax]) {
+            $employees[$code] = Employee::query()->create([
+                'company_id' => $company->id, 'branch_id' => $branch->id, 'code' => $code, 'name' => $name,
+                'designation' => $designation, 'department' => $department, 'join_date' => now()->subYear()->toDateString(),
+                'pay_type' => $payType, 'basic_salary' => $basic, 'allowances' => $allowances,
+                'deductions' => $payType === 'monthly' ? [['name' => 'EOBI', 'amount' => '370']] : [],
+                'monthly_tax' => $tax, 'annual_leave_days' => '14', 'status' => 'active',
+            ]);
+        }
+
+        app(GiveAdvance::class)->execute($employees['EMP-002'], [
+            'date' => now()->toDateString(), 'kind' => 'advance', 'amount' => '15000', 'installment' => '5000', 'paid_from' => 'cash',
+            'note' => 'Demo: recovered over three months',
+        ]);
     }
 
     /** @return list<Product> */

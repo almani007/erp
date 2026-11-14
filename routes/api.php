@@ -23,6 +23,7 @@ foreach ([
     'Reporting',
     'Integration',
     'Production',
+    'People',
     'Records',
     'Saas',
 ] as $context) {
