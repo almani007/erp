@@ -31,6 +31,12 @@ final class Recipe extends Model
         return $this->belongsTo(Product::class);
     }
 
+    /** @return HasMany<RecipeOperation, $this> */
+    public function operations(): HasMany
+    {
+        return $this->hasMany(RecipeOperation::class)->orderBy('sequence');
+    }
+
     /** @return HasMany<RecipeItem, $this> */
     public function items(): HasMany
     {

@@ -20,4 +20,6 @@ enum MovementType: string
     /** Ingredients taken out when a recipe item (a dish, a drink) is sold. */
     case SaleRecipe = 'sale_recipe';
     case SaleRecipeVoid = 'sale_recipe_void';
+    case RentalOut = 'rental_out';
+    case RentalReturn = 'rental_return';
 }

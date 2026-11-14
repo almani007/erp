@@ -16,6 +16,7 @@ use Inventory\Domain\StockPosting;
 use Organization\Infrastructure\Persistence\Eloquent\Warehouse;
 use Production\Infrastructure\Persistence\Eloquent\ProductionOrder;
 use Production\Infrastructure\Persistence\Eloquent\Recipe;
+use Production\Infrastructure\Persistence\Eloquent\WorkCentre;
 use Shared\Domain\Contract\AuditTrail;
 use Shared\Domain\Contract\DocumentNumbers;
 use Shared\Domain\Contract\TenantContext;
@@ -29,7 +30,8 @@ use Shared\Domain\Support\Decimal;
  * Materials and finished goods sit in the same inventory account, so only
  * the extra cost (labour, power, overheads) is journalled: debit inventory,
  * credit "production costs applied" — which offsets the real wage and
- * utility expenses booked through vouchers.
+ * utility expenses booked through vouchers. Work steps (routing) are
+ * costed automatically at their work centres' hourly rates.
  */
 final class ManageProduction
 {
@@ -43,7 +45,13 @@ final class ManageProduction
         private readonly AuthFactory $auth,
     ) {}
 
-    public function plan(Recipe $recipe, Warehouse $warehouse, string $quantity, ?string $notes): ProductionOrder
+    /**
+     * With `$withSubAssemblies`, any material that has its own production
+     * recipe and is short in the warehouse gets a production order of its
+     * own for the shortfall (and so on down, up to five levels). Make those
+     * first: completing them puts the sub-assemblies in stock for this one.
+     */
+    public function plan(Recipe $recipe, Warehouse $warehouse, string $quantity, ?string $notes, bool $withSubAssemblies = false, ?string $parentId = null, int $depth = 0): ProductionOrder
     {
         if ($recipe->status !== 'active' || $recipe->consume_on_sale) {
             throw new \DomainException('Only an active production recipe can be planned.');
@@ -62,11 +70,28 @@ final class ManageProduction
                 'planned_quantity' => $quantity,
                 'status' => ProductionOrder::PLANNED,
                 'notes' => $notes,
+                'parent_id' => $parentId,
                 'created_by' => $this->auth->guard('sanctum')->id(),
             ]);
 
             foreach (SaveRecipe::requirements($recipe->load('items'), $quantity) as $productId => $required) {
                 $order->items()->create(['product_id' => $productId, 'required_quantity' => $required]);
+
+                if (! $withSubAssemblies || $depth >= 5) {
+                    continue;
+                }
+                $subRecipe = Recipe::query()->where('product_id', $productId)->where('status', 'active')->where('consume_on_sale', false)->first();
+                if ($subRecipe === null) {
+                    continue;
+                }
+                $onHand = (string) (DB::table('stock_balances')->where('warehouse_id', $warehouse->id)->where('product_id', $productId)->value('on_hand') ?? '0');
+                // Already planned but not yet made counts as coming.
+                $coming = (string) (ProductionOrder::query()->where('product_id', $productId)->where('warehouse_id', $warehouse->id)
+                    ->where('status', ProductionOrder::PLANNED)->sum('planned_quantity'));
+                $short = Decimal::sub($required, Decimal::add($onHand, $coming, Decimal::QTY_SCALE), Decimal::QTY_SCALE);
+                if (Decimal::isPositive($short)) {
+                    $this->plan($subRecipe, $warehouse, $short, "Sub-assembly for {$order->order_no}", true, $order->id, $depth + 1);
+                }
             }
 
             $this->audit->record('production.order.planned', 'production_order', $order->id, null, ['order_no' => $order->order_no, 'quantity' => $quantity]);
@@ -113,6 +138,9 @@ final class ManageProduction
                 $materialCost = Decimal::add($materialCost, Decimal::mul($used, $unitCost, 4));
             }
 
+            // Work steps priced at their work centres' hourly rates, on top of any extra cost entered.
+            $operations = $this->operationsCost(Recipe::query()->findOrFail($order->recipe_id), $produced);
+            $extraCost = Decimal::add(Decimal::round($extraCost, 2), $operations, 2);
             $totalCost = Decimal::add(Decimal::round($materialCost, 2), Decimal::round($extraCost, 2));
             $unitCost = Decimal::div($totalCost, $produced, Decimal::MONEY_SCALE);
 
@@ -144,6 +172,7 @@ final class ManageProduction
                 'produced_quantity' => $produced,
                 'material_cost' => Decimal::round($materialCost, 2),
                 'extra_cost' => Decimal::round($extraCost, 2),
+                'operations_cost' => $operations,
                 'unit_cost' => $unitCost,
                 'batch_no' => $batchNo,
                 'expiry_date' => $expiryDate,
@@ -177,5 +206,18 @@ final class ManageProduction
     private function present(ProductionOrder $order): ProductionOrder
     {
         return $order->refresh()->load(['product:id,sku,name', 'warehouse:id,name', 'items.product:id,sku,name']);
+    }
+
+    /** Cost of the recipe's work steps for a produced quantity: minutes × hourly rate. */
+    private function operationsCost(Recipe $recipe, string $produced): string
+    {
+        $factor = Decimal::div($produced, (string) $recipe->yield_quantity, 10);
+        $cost = '0';
+        foreach ($recipe->operations()->get() as $op) {
+            $rate = (string) (WorkCentre::query()->whereKey($op->work_centre_id)->value('hourly_rate') ?? '0');
+            $cost = Decimal::add($cost, Decimal::div(Decimal::mul(Decimal::mul((string) $op->minutes, $factor, 10), $rate, 10), '60', 6), 6);
+        }
+
+        return Decimal::round($cost, 2);
     }
 }

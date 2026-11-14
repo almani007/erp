@@ -23,7 +23,7 @@ const STATUSES = ['active', 'inactive', 'discontinued'];
 
 export default function ProductsPage() {
     const canManage = useCan('catalog.product.manage');
-    const { features } = useAppConfig();
+    const { features, moduleOn } = useAppConfig();
     const units = useQuery({ queryKey: ['units'], queryFn: () => getList('/units') });
     const categories = useQuery({ queryKey: ['categories'], queryFn: () => getList('/categories') });
     const taxCodes = useQuery({ queryKey: ['tax-codes'], queryFn: () => getList('/tax-codes') });
@@ -85,6 +85,8 @@ export default function ProductsPage() {
                 {features.expiry && <Column dataField="track_expiry" caption="Expiry tracked" dataType="boolean" width={125} />}
                 {features.serials && <Column dataField="track_serial" caption="Serial / IMEI" dataType="boolean" width={115} />}
                 {features.serials && <Column dataField="warranty_months" caption="Warranty (months)" dataType="number" width={150} />}
+                {moduleOn('restaurant') && <Column dataField="kitchen_station" caption="Kitchen station" width={140} visible={false} />}
+                {moduleOn('bookings') && <Column dataField="duration_minutes" caption="Service minutes" dataType="number" width={130} visible={false} />}
                 {customColumns(customFields)}
                 <Column {...numberColumn('reorder_level', 0)} caption="Reorder at" />
                 <Column dataField="status" width={120}>

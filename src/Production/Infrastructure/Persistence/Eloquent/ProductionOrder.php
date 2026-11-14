@@ -28,7 +28,7 @@ final class ProductionOrder extends Model
     protected $fillable = [
         'company_id', 'warehouse_id', 'recipe_id', 'product_id', 'order_no', 'planned_quantity', 'produced_quantity', 'status',
         'material_cost', 'extra_cost', 'unit_cost', 'batch_no', 'expiry_date', 'notes', 'journal_entry_id',
-        'created_by', 'completed_by', 'completed_at',
+        'created_by', 'completed_by', 'completed_at', 'parent_id', 'operations_cost',
     ];
 
     protected function casts(): array

@@ -14,6 +14,13 @@ Artisan::command('finance:recurring', function (Finance\Application\RunRecurring
     $this->info("Posted {$result['posted']} recurring journals; {$result['failed']} failed (see the template for the reason).");
 })->purpose('Post recurring journals that are due');
 Schedule::command('finance:recurring')->dailyAt('01:10')->withoutOverlapping();
+
+// Rent invoices for active rental contracts, for every tenant.
+Artisan::command('rentals:bill', function (Rentals\Application\ManageRentals $rentals): void {
+    $result = $rentals->billDue(null);
+    $this->info("Raised {$result['invoiced']} rent invoices; {$result['failed']} failed (see the contract).");
+})->purpose('Invoice rent that has fallen due');
+Schedule::command('rentals:bill')->dailyAt('01:20')->withoutOverlapping();
 Schedule::call(static fn () => DB::table('idempotency_records')->where('expires_at', '<', now())->delete())
     ->daily()
     ->name('prune-idempotency-records');

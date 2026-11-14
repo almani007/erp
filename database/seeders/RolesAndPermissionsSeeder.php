@@ -37,6 +37,8 @@ final class RolesAndPermissionsSeeder extends Seeder
         'assets.view', 'assets.manage', 'assets.dispose', 'assets.depreciation.run',
         'banking.view', 'banking.manage', 'banking.cheque.manage', 'banking.reconcile',
         'finance.budget.manage', 'finance.recurring.manage', 'finance.year.close',
+        'restaurant.order.manage', 'restaurant.kitchen.view', 'restaurant.setup.manage',
+        'bookings.manage', 'bookings.setup', 'rentals.manage',
 
         'purchasing.supplier.view', 'purchasing.supplier.manage', 'purchasing.order.view', 'purchasing.order.create',
         'purchasing.order.approve', 'purchasing.receipt.create', 'purchasing.payment.create',
@@ -79,6 +81,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'people.employee.view', 'people.payroll.manage',
         ],
         'branch_manager' => [
+            'restaurant.order.manage', 'restaurant.kitchen.view', 'restaurant.setup.manage', 'bookings.manage', 'bookings.setup', 'rentals.manage',
             'catalog.product.view', 'catalog.product.manage', 'catalog.master.manage', 'catalog.pricing.manage',
             'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage', 'inventory.count.manage',
             'sales.sale.view', 'sales.sale.create', 'sales.sale.void', 'sales.price.override', 'sales.return.create',
@@ -100,7 +103,12 @@ final class RolesAndPermissionsSeeder extends Seeder
         ],
         'cashier' => [
             'catalog.product.view', 'sales.sale.create', 'sales.customer.view', 'records.view', 'records.manage',
+            'restaurant.order.manage', 'bookings.manage',
         ],
+        // Takes orders at tables and sends them to the kitchen; settling is the cashier's.
+        'waiter' => ['catalog.product.view', 'restaurant.order.manage'],
+        // Kitchen display only.
+        'kitchen' => ['restaurant.kitchen.view'],
         'auditor' => [
             'organization.company.view', 'identity.user.view', 'identity.audit.view', 'catalog.product.view',
             'inventory.stock.view', 'sales.sale.view', 'sales.customer.view', 'finance.account.view',

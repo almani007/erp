@@ -26,6 +26,9 @@ foreach ([
     'People',
     'Assets',
     'Banking',
+    'Restaurant',
+    'Bookings',
+    'Rentals',
     'Records',
     'Saas',
 ] as $context) {

@@ -100,6 +100,8 @@ final class ProductController
             'wastage_percent' => ['sometimes', 'numeric', 'min:0', 'max:100'],
             'purity' => ['nullable', 'string', 'max:30'],
             'warranty_months' => ['sometimes', 'integer', 'min:0', 'max:240'],
+            'kitchen_station' => ['nullable', 'string', 'max:40'],
+            'duration_minutes' => ['nullable', 'integer', 'min:5', 'max:1440'],
             ...Product::customFieldRules(),
             'barcodes' => ['sometimes', 'array', 'max:20'],
             'barcodes.*' => ['string', 'max:128'],

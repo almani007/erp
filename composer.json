@@ -52,6 +52,9 @@
             "Records\\": "src/Records/",
             "Assets\\": "src/Assets/",
             "Banking\\": "src/Banking/",
+            "Restaurant\\": "src/Restaurant/",
+            "Bookings\\": "src/Bookings/",
+            "Rentals\\": "src/Rentals/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         }

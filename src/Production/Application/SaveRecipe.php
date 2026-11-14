@@ -37,6 +37,9 @@ final class SaveRecipe
         if (! $data['consume_on_sale'] && ! $product->product_type->tracksInventory()) {
             throw new \DomainException("{$product->name} does not keep stock, so it cannot be produced into stock. Use \"take ingredients out when sold\" instead.");
         }
+        if (! empty($data['operations']) && $data['consume_on_sale']) {
+            throw new \DomainException('Work steps apply to production recipes, not to items made at the moment of sale.');
+        }
         if (! Decimal::isPositive((string) $data['yield_quantity'])) {
             throw new \DomainException('The recipe must make a positive quantity.');
         }
@@ -68,6 +71,12 @@ final class SaveRecipe
                 'status' => 'active',
             ]);
 
+            foreach ($data['operations'] ?? [] as $i => $op) {
+                $recipe->operations()->create([
+                    'sequence' => $i + 1, 'work_centre_id' => $op['work_centre_id'], 'name' => $op['name'], 'minutes' => (string) $op['minutes'],
+                ]);
+            }
+
             foreach ($data['items'] as $item) {
                 $recipe->items()->create([
                     'product_id' => $item['product_id'],
@@ -80,7 +89,7 @@ final class SaveRecipe
                 'product' => $product->sku, 'items' => count($data['items']), 'consume_on_sale' => $data['consume_on_sale'],
             ]);
 
-            return $recipe->load(['product:id,sku,name', 'items.product:id,sku,name']);
+            return $recipe->load(['product:id,sku,name', 'items.product:id,sku,name', 'operations']);
         });
     }
 

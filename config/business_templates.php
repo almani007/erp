@@ -110,7 +110,7 @@ return [
             ['entity' => 'customer', 'label' => 'Salesman', 'type' => 'text'],
         ]],
 
-    ['code' => 'restaurant', 'name' => 'Restaurant, café & bakery', 'description' => 'Menu items are non-stock products with recipes, so each sale takes its ingredients out of stock. Reservations and catering as records. No table plan or kitchen display yet.',
+    ['code' => 'restaurant', 'name' => 'Restaurant, café & bakery', 'description' => 'Restaurant screen with tables, modifiers, kitchen tickets and kitchen display; recipes take ingredients out of stock as dishes sell. Reservations and catering as records.',
         'features' => $f(['expiry']),
         'record_types' => [
             [
@@ -136,7 +136,8 @@ return [
             ],
         ]],
 
-    ['code' => 'services', 'name' => 'Services (salon, clinic, workshop, consultancy)', 'features' => $f([]),
+    ['code' => 'services', 'name' => 'Services (salon, clinic, workshop, consultancy)',
+        'description' => 'Appointments calendar with staff and rooms, working hours, WhatsApp reminders and billing at the till.', 'features' => $f([]),
         'record_types' => [
             [
                 'name' => 'Appointment', 'prefix' => 'APT', 'link_customer' => true, 'statuses' => 'Booked, Arrived, Done, No show, Cancelled',
@@ -159,7 +160,7 @@ return [
         ]],
 
     ['code' => 'manufacturing', 'name' => 'Small manufacturing, bakery & workshop',
-        'description' => 'Recipes / bills of materials and production orders under Supply chain → Recipes & production.',
+        'description' => 'Multi-level recipes, work centres with hourly costs, routing and production orders under Supply chain → Recipes & production.',
         'features' => $f(['wholesale', 'packs', 'expiry']),
         'record_types' => [[
             'name' => 'Customer order', 'prefix' => 'CO', 'link_customer' => true, 'statuses' => 'Received, In production, Ready, Delivered',
@@ -171,7 +172,8 @@ return [
             ],
         ]]],
 
-    ['code' => 'rental', 'name' => 'Rental & hire', 'features' => $f(['serials']),
+    ['code' => 'rental', 'name' => 'Rental & hire',
+        'description' => 'Rental contracts with deposits, automatic daily / weekly / monthly rent invoices and returns.', 'features' => $f(['serials']),
         'record_types' => [[
             'name' => 'Rental agreement', 'prefix' => 'RNT', 'link_customer' => true, 'statuses' => 'Reserved, Out, Returned, Overdue',
             'fields' => [

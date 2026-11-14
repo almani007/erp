@@ -31,6 +31,10 @@ const NAV: { section: string; links: NavLink[] }[] = [
     {
         section: 'Selling', links: [
             { text: 'Point of Sale', icon: 'cart', path: '/pos', permission: 'sales.sale.create', module: 'sales' },
+            { text: 'Restaurant', icon: 'food', path: '/restaurant', permission: 'restaurant.order.manage', module: 'restaurant' },
+            { text: 'Kitchen display', icon: 'clock', path: '/kitchen', permission: 'restaurant.kitchen.view', module: 'restaurant' },
+            { text: 'Appointments', icon: 'event', path: '/appointments', permission: 'bookings.manage', module: 'bookings' },
+            { text: 'Rentals', icon: 'key', path: '/rentals', permission: 'rentals.manage', module: 'rentals' },
             { text: 'Sales & returns', icon: 'money', path: '/sales', permission: 'sales.sale.view', module: 'sales' },
             { text: 'Quotations & orders', icon: 'textdocument', path: '/sales-documents', permission: 'sales.order.view', module: 'sales' },
             { text: 'Receivables', icon: 'money', path: '/receivables', permission: 'sales.receivable.view', module: 'sales' },
@@ -74,6 +78,7 @@ const NAV: { section: string; links: NavLink[] }[] = [
     {
         section: 'Administration', links: [
             { text: 'Business & branches', icon: 'map', path: '/organization' },
+            { text: 'Restaurant setup', icon: 'preferences', path: '/restaurant-setup', permission: 'restaurant.setup.manage', module: 'restaurant' },
             { text: 'Custom records', icon: 'columnfield', path: '/record-types', permission: 'organization.settings.view', module: 'records' },
             { text: 'Users & roles', icon: 'key', path: '/users', permission: 'identity.user.view' },
             { text: 'Audit log', icon: 'clock', path: '/audit-log', permission: 'identity.audit.view' },

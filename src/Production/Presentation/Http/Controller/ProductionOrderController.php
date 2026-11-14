@@ -39,6 +39,7 @@ final class ProductionOrderController
             'warehouse_id' => ['required', 'uuid'],
             'quantity' => ['required', 'numeric', 'gt:0', 'decimal:0,6'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'with_sub_assemblies' => ['sometimes', 'boolean'],
         ]);
 
         $order = $action->plan(
@@ -46,6 +47,7 @@ final class ProductionOrderController
             $this->warehouse($data['warehouse_id'], $branches),
             (string) $data['quantity'],
             $data['notes'] ?? null,
+            (bool) ($data['with_sub_assemblies'] ?? false),
         );
 
         return new JsonResponse(['data' => $order], 201);

@@ -49,6 +49,8 @@ final class Product extends Model
         'wastage_percent',
         'purity',
         'warranty_months',
+        'kitchen_station',
+        'duration_minutes',
         'reorder_level',
         'status',
         'description',

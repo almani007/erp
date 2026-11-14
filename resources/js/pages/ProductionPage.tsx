@@ -9,6 +9,7 @@ import SelectBox from 'devextreme-react/select-box';
 import TabPanel, { Item } from 'devextreme-react/tab-panel';
 import TextBox from 'devextreme-react/text-box';
 import DateBox from 'devextreme-react/date-box';
+import CrudGrid from '../components/CrudGrid';
 import Page, { Field } from '../components/Page';
 import { statusCell } from '../components/Status';
 import { api, getList, idempotent, newIdempotencyKey, notifyError, notifySuccess } from '../lib/api';
@@ -35,6 +36,7 @@ export default function ProductionPage() {
             <TabPanel className="erp-tabs" deferRendering animationEnabled={false}>
                 <Item title="Production orders"><Orders /></Item>
                 <Item title="Recipes"><Recipes /></Item>
+                <Item title="Work centres"><WorkCentres /></Item>
             </TabPanel>
         </Page>
     );
@@ -77,6 +79,8 @@ function RecipeEditor({ recipe, onClose, onSaved }: { recipe: Recipe | null; onC
     const [yieldQty, setYieldQty] = useState<number>(Number(recipe?.yield_quantity ?? 1));
     const [onSale, setOnSale] = useState(recipe?.consume_on_sale ?? false);
     const [notes, setNotes] = useState(recipe?.notes ?? '');
+    const centres = useQuery({ queryKey: ['work-centres'], queryFn: () => getList<{ id: string; name: string; hourly_rate: string }>('/work-centres') }).data ?? [];
+    const [ops, setOps] = useState<any[]>(() => ((recipe as any)?.operations ?? []).map((o: any) => ({ work_centre_id: o.work_centre_id, name: o.name, minutes: Number(o.minutes) })));
     const [items, setItems] = useState<RecipeItem[]>(() => (recipe?.items ?? []).map((i) => ({ product_id: i.product_id, quantity: Number(i.quantity), wastage_percent: Number(i.wastage_percent) })));
     const [busy, setBusy] = useState(false);
     const list = products.data ?? [];
@@ -90,7 +94,7 @@ function RecipeEditor({ recipe, onClose, onSaved }: { recipe: Recipe | null; onC
 
     const save = async () => {
         setBusy(true);
-        const body = { product_id: productId, yield_quantity: yieldQty, consume_on_sale: onSale, notes: notes || null, items };
+        const body = { product_id: productId, yield_quantity: yieldQty, consume_on_sale: onSale, notes: notes || null, items, operations: onSale ? [] : ops };
         try {
             if (recipe) await api.put(`/recipes/${recipe.id}`, body);
             else await api.post('/recipes', body);
@@ -138,6 +142,18 @@ function RecipeEditor({ recipe, onClose, onSaved }: { recipe: Recipe | null; onC
                 <Column dataField="quantity" caption="Quantity (base unit)" dataType="number" width={150}><RequiredRule /></Column>
                 <Column dataField="wastage_percent" caption="Wastage %" dataType="number" width={110} />
             </DataGrid>
+            {!onSale && (
+                <>
+                    <div className="erp-muted" style={{ margin: '8px 0 4px' }}>Work steps for the quantity above — costed at each work centre's hourly rate</div>
+                    <DataGrid dataSource={ops} showBorders height={150}
+                        onRowInserted={() => setOps([...ops])} onRowUpdated={() => setOps([...ops])} onRowRemoved={() => setOps([...ops])}>
+                        <Editing mode="cell" allowAdding allowUpdating allowDeleting newRowPosition="last" />
+                        <Column dataField="name" caption="Step"><RequiredRule /></Column>
+                        <Column dataField="work_centre_id" caption="Work centre"><Lookup dataSource={centres} valueExpr="id" displayExpr="name" /><RequiredRule /></Column>
+                        <Column dataField="minutes" dataType="number" width={110}><RequiredRule /></Column>
+                    </DataGrid>
+                </>
+            )}
             <Field label="Notes / method"><TextBox value={notes} onValueChanged={(e) => setNotes(e.value)} /></Field>
             <div className="erp-actions">
                 <span className="erp-muted">Estimated cost per unit: <b>{money(cost)}</b> (at current cost prices)</span>
@@ -181,6 +197,8 @@ function Orders() {
                 <Column dataField="planned_quantity" caption="Planned" width={90} cellRender={({ value }) => qty(value)} />
                 <Column dataField="produced_quantity" caption="Produced" width={90} cellRender={({ value }) => (value ? qty(value) : '')} />
                 <Column dataField="unit_cost" caption="Unit cost" width={110} cellRender={({ value }) => (value ? money(value) : '')} />
+                <Column dataField="operations_cost" caption="Work steps" width={110} cellRender={({ value }) => (Number(value) ? money(value) : '')} />
+                <Column caption="For" width={120} calculateCellValue={(o: any) => (o.parent_id ? (orders.data ?? []).find((p) => p.id === o.parent_id)?.order_no ?? 'another order' : '')} />
                 <Column dataField="status" width={110} cellRender={statusCell} />
                 {canManage && <Column caption="" width={190} cellRender={({ data }: { data: Order }) => data.status === 'planned' && (
                     <>
@@ -209,13 +227,14 @@ function PlanOrder({ onClose, onDone }: { onClose: () => void; onDone: () => voi
     const [recipeId, setRecipeId] = useState<string | null>(null);
     const [warehouseId, setWarehouseId] = useState<string | null>(null);
     const [quantity, setQuantity] = useState<number>(1);
+    const [subs, setSubs] = useState(true);
     const [busy, setBusy] = useState(false);
     const [key] = useState(newIdempotencyKey);
 
     const save = async () => {
         setBusy(true);
         try {
-            await api.post('/production-orders', { recipe_id: recipeId, warehouse_id: warehouseId, quantity }, idempotent(key));
+            await api.post('/production-orders', { recipe_id: recipeId, warehouse_id: warehouseId, quantity, with_sub_assemblies: subs }, idempotent(key));
             notifySuccess('Production planned.');
             onDone();
         } catch (e) {
@@ -235,6 +254,7 @@ function PlanOrder({ onClose, onDone }: { onClose: () => void; onDone: () => voi
                 <SelectBox dataSource={warehouses.data ?? []} valueExpr="id" displayExpr="name" value={warehouseId} onValueChanged={(e) => setWarehouseId(e.value)} />
             </Field>
             <Field label="Quantity to make"><NumberBox value={quantity} min={0.000001} onValueChanged={(e) => setQuantity(e.value)} /></Field>
+            <CheckBox value={subs} onValueChanged={(e) => setSubs(e.value)} text="Also plan sub-assemblies that are short in stock (made from their own recipes)" />
             <div className="erp-actions">
                 <Button text="Cancel" onClick={onClose} />
                 <Button text={busy ? 'Saving…' : 'Plan'} type="default" disabled={busy || !recipeId || !warehouseId || !quantity} onClick={save} />
@@ -288,5 +308,18 @@ function CompleteOrder({ order, onClose, onDone }: { order: Order; onClose: () =
                 <Button text={busy ? 'Completing…' : 'Complete production'} type="default" disabled={busy || !produced} onClick={save} />
             </div>
         </Popup>
+    );
+}
+
+function WorkCentres() {
+    return (
+        <div className="erp-card">
+            <p className="erp-muted">Lines, machines or teams where production work is done. The hourly rate (labour, power, machine and overhead) prices each recipe's work steps.</p>
+            <CrudGrid resource="/work-centres" canAdd={can('production.recipe.manage')} canUpdate={can('production.recipe.manage')} height="calc(100vh - 320px)">
+                <Column dataField="name"><RequiredRule /></Column>
+                <Column dataField="hourly_rate" caption="Cost per hour" dataType="number" format="#,##0.00"><RequiredRule /></Column>
+                <Column dataField="status" width={120}><Lookup dataSource={['active', 'inactive']} /></Column>
+            </CrudGrid>
+        </div>
     );
 }

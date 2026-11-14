@@ -173,12 +173,33 @@ advances; payment posts salaries payable against cash or bank. Printable payslip
 settings (`payroll.month_days` 30, `payroll.hours_per_day` 8, `payroll.overtime_rate` 1). Income
 tax is entered per employee, not computed from tax slabs; leave balances are not tracked yet.
 
-**What this does and does not cover.** Custom records capture data and track status; they do
-not run process logic. A restaurant now has recipe-based stock, but no table plan, modifiers or
-kitchen display; production has no routing, work centres or multi-level BOMs (a sub-assembly
-must be produced first); a rental business can track agreements, but rent is not invoiced on a
-schedule.
-Also still missing within the retail trades: a
+### Restaurants, appointments, rentals and manufacturing
+
+**Restaurant** (Selling → Restaurant, Kitchen display; Administration → Restaurant setup). Tables
+by area on a live floor plan; dine-in, takeaway and delivery orders; modifier groups with
+required / optional choices and price differences ("Sugar: gur +20", "Size", "Add-ons"); kitchen
+notes; items sent to the kitchen as numbered tickets (KOT) printed per station; a kitchen display
+with Start / Ready, timers and late tickets in red; void with reason, move table, bill print and
+reopen; settlement with split payment and discount through the cashier's shift, so stock (recipes
+use up ingredients), tax, journal and cash count work as at the till. Service charge % and its
+service item are settings (`restaurant.service_charge_percent`, `restaurant.service_charge_sku`).
+
+**Appointments** (Selling → Appointments). Staff, rooms or equipment with weekly working hours and
+the services they offer; services carry a duration. Day / week / month / agenda calendar per
+resource; bookings outside working hours or overlapping another are refused; free-slot lookup;
+confirmed → arrived → done / no-show / cancelled; billing at the till; tomorrow's reminders open
+WhatsApp with the message ready.
+
+**Rentals** (Selling → Rentals). Contracts with a security deposit (held as a liability), the
+stocked item leaving and returning to stock, rent invoiced to the customer's account daily,
+weekly or monthly — automatically each night by `rentals:bill`, catching up missed periods — and
+returns that bill up to the return date and refund the deposit less any deduction.
+
+**Manufacturing.** Work centres with an hourly cost; recipe work steps (routing) costed into each
+production order automatically; multi-level recipes — planning an order can also plan
+sub-assemblies that are short in stock, down to five levels.
+
+Still missing: a
 size-colour stock matrix view, route / van sales, and stock-level serial tracking.
 
 Demo logins (created only when `APP_ENV` is not `production`; change them after first login):
@@ -223,6 +244,9 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | People (HR & payroll) | wired | Employees, attendance register, advances and loans, monthly payroll with maker-checker approval, journals, payslips |
 | Accounting tools | wired | General ledger, monthly / branch P&L, cash flow, budget vs actual, sales tax summary, budgets, recurring journals, year-end close |
 | Banking | wired | Bank and cash accounts, cheque register with post-dated cheques, transfers, bank reconciliation with CSV statement matching |
+| Restaurant | wired | Floor plan, dine-in / takeaway / delivery, modifiers, KOT per station, kitchen display, split settlement |
+| Appointments | wired | Resources with working hours, calendar, clash checks, free slots, WhatsApp reminders, billing |
+| Rentals | wired | Contracts, deposits, nightly rent invoicing, returns with deductions |
 | Fixed assets | wired | Asset register, categories, straight-line and reducing-balance depreciation runs with reversal, disposal with gain/loss |
 | Payables | wired | Supplier bills matched to goods receipts with variance tolerance, expense bills, debit notes, payments allocated to bills, aging, statements |
 | Sales documents | wired | Quotations, sales orders, partial invoicing on credit terms, receipts allocated to invoices, aging, statements, A4 printing |

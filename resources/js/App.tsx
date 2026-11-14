@@ -36,6 +36,11 @@ import PayablesPage from './pages/PayablesPage';
 import AssetsPage from './pages/AssetsPage';
 import BankingPage from './pages/BankingPage';
 import AccountingToolsPage from './pages/AccountingToolsPage';
+import RestaurantPage from './pages/RestaurantPage';
+import KitchenPage from './pages/KitchenPage';
+import RestaurantSetupPage from './pages/RestaurantSetupPage';
+import BookingsPage from './pages/BookingsPage';
+import RentalsPage from './pages/RentalsPage';
 import SaasTenantsPage from './pages/saas/SaasTenantsPage';
 import SaasTemplatesPage from './pages/saas/SaasTemplatesPage';
 
@@ -68,6 +73,11 @@ export default function App() {
                 <Route path="/assets" element={<AssetsPage />} />
                 <Route path="/banking" element={<BankingPage />} />
                 <Route path="/accounting-tools" element={<AccountingToolsPage />} />
+                <Route path="/restaurant" element={<RestaurantPage />} />
+                <Route path="/kitchen" element={<KitchenPage />} />
+                <Route path="/restaurant-setup" element={<RestaurantSetupPage />} />
+                <Route path="/appointments" element={<BookingsPage />} />
+                <Route path="/rentals" element={<RentalsPage />} />
                 <Route path="/records/:typeKey" element={<RecordsPage />} />
                 <Route path="/products" element={<ProductsPage />} />
                 <Route path="/master-data" element={<MasterDataPage />} />

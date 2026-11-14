@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use Assets\Application\ManageFixedAssets;
 use Assets\Infrastructure\Persistence\Eloquent\AssetCategory;
+use Bookings\Infrastructure\Persistence\Eloquent\BookingResource;
 use Catalog\Infrastructure\Persistence\Eloquent\BranchPrice;
 use Catalog\Infrastructure\Persistence\Eloquent\Coupon;
 use Catalog\Infrastructure\Persistence\Eloquent\MarketRate;
@@ -31,6 +32,8 @@ use Purchasing\Infrastructure\Persistence\Eloquent\Supplier;
 use People\Application\GiveAdvance;
 use People\Infrastructure\Persistence\Eloquent\Employee;
 use Production\Infrastructure\Persistence\Eloquent\Recipe;
+use Restaurant\Infrastructure\Persistence\Eloquent\DiningTable;
+use Restaurant\Infrastructure\Persistence\Eloquent\ModifierGroup;
 use Saas\Application\ProvisionTenant;
 use Sales\Infrastructure\Persistence\Eloquent\Customer;
 use Sales\Infrastructure\Persistence\Eloquent\PosTerminal;
@@ -407,6 +410,31 @@ final class DemoTenantSeeder extends Seeder
         $lassiRecipe = Recipe::query()->create(['product_id' => $lassi->id, 'yield_quantity' => '10', 'consume_on_sale' => false, 'status' => 'active']);
         $lassiRecipe->items()->create(['product_id' => $find('DAI-002')->id, 'quantity' => '10', 'wastage_percent' => '2']);
         $lassiRecipe->items()->create(['product_id' => $find('GRO-004')->id, 'quantity' => '0.5', 'wastage_percent' => '0']);
+
+        // Restaurant: tables, a sugar choice on chai, and a kitchen station for made dishes.
+        $chai->update(['kitchen_station' => 'Tea counter']);
+        foreach (['T1', 'T2', 'T3', 'T4', 'T5', 'T6'] as $i => $name) {
+            DiningTable::query()->create(['branch_id' => Branch::query()->where('code', 'HO')->value('id'), 'area' => $i < 4 ? 'Main hall' : 'Family hall', 'name' => $name, 'seats' => $i < 4 ? 4 : 6, 'sort_order' => $i]);
+        }
+        $sugar = ModifierGroup::query()->create(['name' => 'Sugar', 'min_select' => 1, 'max_select' => 1, 'status' => 'active', 'options' => [
+            ['id' => 'sugar-normal', 'name' => 'Normal sugar', 'price' => '0'], ['id' => 'sugar-less', 'name' => 'Less sugar', 'price' => '0'],
+            ['id' => 'sugar-none', 'name' => 'No sugar', 'price' => '0'], ['id' => 'sugar-gur', 'name' => 'Gur instead', 'price' => '20'],
+        ]]);
+        DB::table('product_modifier_groups')->insert(['product_id' => $chai->id, 'modifier_group_id' => $sugar->id, 'sort_order' => 0]);
+
+        // Services and rentals: a timed service and a rent item (no stock of their own).
+        $haircut = Product::query()->create([
+            'sku' => 'SRV-HAIRCUT', 'name' => 'Haircut & styling', 'product_type' => 'service', 'base_unit_id' => $units['pc']->id,
+            'category_id' => null, 'tax_code_id' => $exempt->id, 'cost_price' => '0', 'sale_price' => '800', 'status' => 'active', 'duration_minutes' => 45,
+        ]);
+        BookingResource::query()->create([
+            'branch_id' => Branch::query()->where('code', 'HO')->value('id'), 'name' => 'Stylist — Nadia', 'kind' => 'staff', 'color' => '#db2777',
+            'working_hours' => array_fill_keys(['1', '2', '3', '4', '5', '6'], [['11:00', '15:00'], ['16:00', '21:00']]), 'service_ids' => [$haircut->id], 'status' => 'active',
+        ]);
+        Product::query()->create([
+            'sku' => 'RNT-GENSET', 'name' => 'Generator rent', 'product_type' => 'service', 'base_unit_id' => $units['pc']->id,
+            'category_id' => null, 'tax_code_id' => $exempt->id, 'cost_price' => '0', 'sale_price' => '15000', 'status' => 'active',
+        ]);
 
         return $products;
     }
