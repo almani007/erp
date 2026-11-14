@@ -16,5 +16,6 @@ return [
     Inventory\Infrastructure\Provider\InventoryServiceProvider::class,
     Finance\Infrastructure\Provider\FinanceServiceProvider::class,
     Sales\Infrastructure\Provider\SalesServiceProvider::class,
+    Purchasing\Infrastructure\Provider\PurchasingServiceProvider::class,
     Reporting\Infrastructure\Provider\ReportingServiceProvider::class,
 ];

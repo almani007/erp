@@ -17,6 +17,10 @@ import ReportsPage from './pages/ReportsPage';
 import OrganizationPage from './pages/OrganizationPage';
 import UsersPage from './pages/UsersPage';
 import AuditLogPage from './pages/AuditLogPage';
+import PricingPage from './pages/PricingPage';
+import PriceCheckerPage from './pages/PriceCheckerPage';
+import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
+import SuppliersPage from './pages/SuppliersPage';
 
 export default function App() {
     const token = useSession((s) => s.token);
@@ -48,6 +52,10 @@ export default function App() {
                 <Route path="/organization" element={<OrganizationPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/audit-log" element={<AuditLogPage />} />
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/price-checker" element={<PriceCheckerPage />} />
+                <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
+                <Route path="/suppliers" element={<SuppliersPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

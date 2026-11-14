@@ -17,6 +17,7 @@ final class PostingAccounts
     public const array KEYS = [
         'cash', 'bank', 'accounts_receivable', 'inventory', 'accounts_payable', 'sales_tax_payable',
         'sales_revenue', 'cost_of_goods_sold', 'inventory_adjustment', 'opening_balance_equity', 'cash_over_short',
+        'purchase_tax_receivable',
     ];
 
     /** @var array<string, array<string, string>> */

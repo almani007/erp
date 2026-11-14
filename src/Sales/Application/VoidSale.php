@@ -43,6 +43,10 @@ final class VoidSale
                 throw new \DomainException("Sale {$sale->sale_no} is already voided.");
             }
 
+            if ($sale->returns()->exists()) {
+                throw new \DomainException("Sale {$sale->sale_no} has returns against it and cannot be voided.");
+            }
+
             $shift = PosShift::query()->lockForUpdate()->findOrFail($sale->shift_id);
             if (! $shift->isOpen()) {
                 throw new \DomainException("Sale {$sale->sale_no} belongs to a closed shift and can no longer be voided.");

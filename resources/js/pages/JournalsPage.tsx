@@ -7,6 +7,7 @@ import TextBox from 'devextreme-react/text-box';
 import DataGrid, { Column, Lookup, RequiredRule, Summary, TotalItem } from 'devextreme-react/data-grid';
 import CrudGrid from '../components/CrudGrid';
 import LinesGrid, { cleanLines } from '../components/LinesGrid';
+import { StatusBadge, statusCell } from '../components/Status';
 import Page, { Field } from '../components/Page';
 import { api, getList, getOne, idempotent, newIdempotencyKey, notifyError, notifySuccess } from '../lib/api';
 import { numberColumn, startOfMonth, today } from '../lib/format';
@@ -43,7 +44,7 @@ export default function JournalsPage() {
                 <Column dataField="posting_date" caption="Date" dataType="date" width={130} />
                 <Column dataField="source_type" caption="Source" width={160} />
                 <Column dataField="description" />
-                <Column dataField="status" width={120} />
+                <Column dataField="status" width={120} cellRender={statusCell} />
                 <Column {...numberColumn('total')} caption="Amount" />
             </CrudGrid>
             {creating && <JournalForm companyId={companyId} onClose={(saved) => { setCreating(false); if (saved) reload(); }} />}
@@ -106,7 +107,7 @@ function JournalForm({ companyId, onClose }: { companyId: string; onClose: (save
                     <TotalItem column="credit" summaryType="sum" valueFormat={sumFormat} displayFormat="{0}" />
                 </Summary>
             </LinesGrid>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <div className="erp-actions">
                 <Button text="Cancel" onClick={() => onClose(false)} />
                 <Button text={busy ? 'Posting…' : 'Post journal'} type="default" disabled={busy} onClick={save} />
             </div>
@@ -139,7 +140,7 @@ function JournalDetail({ journalId, onClose }: { journalId: string; onClose: (ch
             {data && (
                 <>
                     <div className="erp-row">
-                        <span className={`erp-status-badge ${data.status}`}>{data.status}</span>
+                        <StatusBadge value={data.status} />
                         <span className="erp-muted">{data.posting_date}</span>
                         <span className="erp-muted">Source: {data.source_type}</span>
                         <span>{data.description}</span>

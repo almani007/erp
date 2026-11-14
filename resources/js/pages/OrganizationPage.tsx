@@ -19,7 +19,7 @@ export default function OrganizationPage() {
 
     return (
         <Page title="Branches & warehouses" subtitle="Codes are fixed after creation. New branches are added to the company of the selected branch.">
-            <TabPanel deferRendering animationEnabled={false}>
+            <TabPanel className="erp-tabs" deferRendering animationEnabled={false}>
                 <Item title="Branches">
                     <CrudGrid
                         resource="/branches" height={GRID_HEIGHT} canAdd={canBranches && !!companyId} canUpdate={canBranches}

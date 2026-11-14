@@ -81,9 +81,9 @@ final class ManageShift
 
     /**
      * Expected drawer cash for a shift:
-     * opening float + cash taken − change given + paid-in − paid-out.
+     * opening float + cash taken − change given − cash refunds + paid-in − paid-out.
      *
-     * @return array{opening_cash: string, cash_sales: string, paid_in: string, paid_out: string, expected_cash: string, sales_count: int, sales_total: string, by_method: array<string, string>}
+     * @return array{opening_cash: string, cash_sales: string, cash_refunds: string, paid_in: string, paid_out: string, expected_cash: string, sales_count: int, sales_total: string, by_method: array<string, string>}
      */
     public function summary(PosShift $shift): array
     {
@@ -106,13 +106,18 @@ final class ManageShift
         $cashSales = Decimal::sub($tenders['cash'] ?? '0', (string) $sales->change_given);
         $paidIn = (string) ($moves['paid_in'] ?? '0');
         $paidOut = (string) ($moves['paid_out'] ?? '0');
+        $cashRefunds = (string) DB::table('sales_returns')->where('shift_id', $shift->id)->where('refund_method', 'cash')->sum('grand_total');
 
         return [
             'opening_cash' => (string) $shift->opening_cash,
             'cash_sales' => $cashSales,
             'paid_in' => $paidIn,
             'paid_out' => $paidOut,
-            'expected_cash' => Decimal::sub(Decimal::add(Decimal::add((string) $shift->opening_cash, $cashSales), $paidIn), $paidOut),
+            'cash_refunds' => Decimal::round($cashRefunds, Decimal::MONEY_SCALE),
+            'expected_cash' => Decimal::sub(
+                Decimal::sub(Decimal::add(Decimal::add((string) $shift->opening_cash, $cashSales), $paidIn), $paidOut),
+                $cashRefunds,
+            ),
             'sales_count' => (int) $sales->n,
             'sales_total' => (string) $sales->total,
             'by_method' => $tenders,

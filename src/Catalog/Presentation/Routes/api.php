@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Catalog\Presentation\Http\Controller\BarcodeController;
 use Catalog\Presentation\Http\Controller\MasterDataController;
+use Catalog\Presentation\Http\Controller\PricingController;
 use Catalog\Presentation\Http\Controller\ProductController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,4 +33,19 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('tax-codes', [MasterDataController::class, 'taxCodes'])->middleware($view);
     Route::post('tax-codes', [MasterDataController::class, 'storeTaxCode'])->middleware($master);
     Route::put('tax-codes/{taxCodeId}', [MasterDataController::class, 'updateTaxCode'])->middleware($master);
+
+    $pricing = 'permission:catalog.pricing.manage';
+
+    Route::get('branch-prices', [PricingController::class, 'branchPrices'])->middleware($view);
+    Route::post('branch-prices', [PricingController::class, 'storeBranchPrice'])->middleware($pricing);
+    Route::put('branch-prices/{priceId}', [PricingController::class, 'updateBranchPrice'])->middleware($pricing);
+    Route::delete('branch-prices/{priceId}', [PricingController::class, 'destroyBranchPrice'])->middleware($pricing);
+
+    Route::get('promotions', [PricingController::class, 'promotions'])->middleware($view);
+    Route::post('promotions', [PricingController::class, 'storePromotion'])->middleware($pricing);
+    Route::put('promotions/{promotionId}', [PricingController::class, 'updatePromotion'])->middleware($pricing);
+
+    Route::get('coupons', [PricingController::class, 'coupons'])->middleware($view);
+    Route::post('coupons', [PricingController::class, 'storeCoupon'])->middleware($pricing);
+    Route::put('coupons/{couponId}', [PricingController::class, 'updateCoupon'])->middleware($pricing);
 });

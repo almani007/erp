@@ -7,6 +7,7 @@ import TextBox from 'devextreme-react/text-box';
 import { Column, Lookup, RequiredRule } from 'devextreme-react/data-grid';
 import CrudGrid from '../components/CrudGrid';
 import LinesGrid, { cleanLines } from '../components/LinesGrid';
+import { statusCell } from '../components/Status';
 import Page, { Field } from '../components/Page';
 import { api, getList, idempotent, newIdempotencyKey, notifyError, notifySuccess } from '../lib/api';
 import { useCan } from '../lib/store';
@@ -37,7 +38,7 @@ export default function StockTransfersPage() {
                 <Column dataField="transfer_no" caption="No." width={140} />
                 <Column dataField="source.name" caption="From" />
                 <Column dataField="destination.name" caption="To" />
-                <Column dataField="status" width={130} />
+                <Column dataField="status" width={130} cellRender={statusCell} />
                 <Column dataField="dispatched_at" caption="Dispatched" dataType="datetime" width={180} />
                 <Column dataField="received_at" caption="Received" dataType="datetime" width={180} />
                 <Column caption="Items" width={90} calculateCellValue={(row: any) => row.lines?.length ?? 0} alignment="right" />
@@ -103,7 +104,7 @@ function TransferForm({ onClose }: { onClose: (saved: boolean) => void }) {
                 </Column>
                 <Column dataField="quantity" dataType="number" width={160}><RequiredRule /></Column>
             </LinesGrid>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <div className="erp-actions">
                 <Button text="Cancel" onClick={() => onClose(false)} />
                 <Button text={busy ? 'Dispatching…' : 'Dispatch'} type="default" disabled={busy} onClick={save} />
             </div>

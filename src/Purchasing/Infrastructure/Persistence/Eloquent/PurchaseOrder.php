@@ -4,47 +4,54 @@ declare(strict_types=1);
 
 namespace Purchasing\Infrastructure\Persistence\Eloquent;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Purchasing\Domain\Enum\PurchaseOrderStatus;
+use Shared\Infrastructure\Concern\BelongsToTenant;
+use Shared\Infrastructure\Concern\HasUuid;
 
 final class PurchaseOrder extends Model
 {
-    use HasUuids;
+    use BelongsToTenant;
+    use HasUuid;
 
-    protected $guarded = [];
+    protected $table = 'purchase_orders';
+
+    protected $fillable = [
+        'company_id', 'branch_id', 'warehouse_id', 'supplier_id', 'po_no', 'status', 'order_date', 'expected_date',
+        'notes', 'subtotal', 'tax_total', 'grand_total', 'created_by', 'approved_by', 'approved_at',
+    ];
+
+    public const string DRAFT = 'draft';
+
+    public const string APPROVED = 'approved';
+
+    public const string PARTIALLY_RECEIVED = 'partially_received';
+
+    public const string RECEIVED = 'received';
+
+    public const string CANCELLED = 'cancelled';
 
     protected function casts(): array
     {
-        return [
-            'status' => PurchaseOrderStatus::class,
-            'ordered_at' => 'datetime',
-            'expected_at' => 'datetime',
-            'net_total' => 'decimal:4',
-            'tax_total' => 'decimal:4',
-            'grand_total' => 'decimal:4',
-        ];
+        return ['order_date' => 'date:Y-m-d', 'expected_date' => 'date:Y-m-d', 'approved_at' => 'datetime'];
     }
 
-    public function supplier(): BelongsTo
-    {
-        return $this->belongsTo(Supplier::class);
-    }
-
+    /** @return HasMany<PurchaseOrderItem, $this> */
     public function items(): HasMany
     {
-        return $this->hasMany(PurchaseOrderItem::class, 'po_id');
+        return $this->hasMany(PurchaseOrderItem::class, 'purchase_order_id');
     }
 
-    public function goodsReceipts(): HasMany
+    /** @return BelongsTo<Supplier, $this> */
+    public function supplier(): BelongsTo
     {
-        return $this->hasMany(GoodsReceipt::class, 'po_id');
+        return $this->belongsTo(Supplier::class, 'supplier_id');
     }
 
-    public function invoices(): HasMany
+    /** @return HasMany<GoodsReceipt, $this> */
+    public function receipts(): HasMany
     {
-        return $this->hasMany(SupplierInvoice::class, 'po_id');
+        return $this->hasMany(GoodsReceipt::class, 'purchase_order_id');
     }
 }

@@ -30,7 +30,7 @@ export default function ReportsPage() {
                 <Field label="To"><DateBox type="date" value={to} dateSerializationFormat="yyyy-MM-dd" onValueChanged={(e) => setTo(e.value)} /></Field>
             </div>
             {error && <div className="erp-card erp-error">{errorMessage(error)}</div>}
-            <TabPanel deferRendering animationEnabled={false}>
+            <TabPanel className="erp-tabs" deferRendering animationEnabled={false}>
                 <Item title="Trial balance">
                     <div className="erp-card">
                         <DataGrid dataSource={(trial.data as any) ?? []} showBorders columnAutoWidth>

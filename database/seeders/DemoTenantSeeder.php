@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use Catalog\Infrastructure\Persistence\Eloquent\BranchPrice;
+use Catalog\Infrastructure\Persistence\Eloquent\Coupon;
 use Catalog\Infrastructure\Persistence\Eloquent\Product;
 use Catalog\Infrastructure\Persistence\Eloquent\ProductBarcode;
 use Catalog\Infrastructure\Persistence\Eloquent\ProductCategory;
+use Catalog\Infrastructure\Persistence\Eloquent\PromotionItem;
+use Catalog\Infrastructure\Persistence\Eloquent\PromotionRule;
 use Catalog\Infrastructure\Persistence\Eloquent\TaxCode;
 use Catalog\Infrastructure\Persistence\Eloquent\Unit;
 use Finance\Infrastructure\Persistence\Eloquent\Account;
@@ -21,6 +25,7 @@ use Organization\Infrastructure\Persistence\Eloquent\Branch;
 use Organization\Infrastructure\Persistence\Eloquent\Company;
 use Organization\Infrastructure\Persistence\Eloquent\Tenant;
 use Organization\Infrastructure\Persistence\Eloquent\Warehouse;
+use Purchasing\Infrastructure\Persistence\Eloquent\Supplier;
 use Sales\Infrastructure\Persistence\Eloquent\Customer;
 use Sales\Infrastructure\Persistence\Eloquent\PosTerminal;
 use Shared\Domain\Contract\TenantContext;
@@ -89,6 +94,20 @@ final class DemoTenantSeeder extends Seeder
             }
             DB::table('document_sequences')->insert(['tenant_id' => $tenant->id, 'type' => 'customer', 'scope' => $tenant->id, 'current_value' => 3]);
 
+            foreach ([['Indus Foods Distribution', 'Bilal Ahmed', '021-3456789', 30], ['Karachi Beverage Co.', 'Hina Sheikh', '021-3567890', 15], ['CleanHome Supplies', 'Usman Tariq', '021-3678901', 7]] as $i => [$name, $contact, $phone, $terms]) {
+                Supplier::query()->create([
+                    'supplier_code' => sprintf('SUP-%06d', $i + 1),
+                    'name' => $name,
+                    'contact_person' => $contact,
+                    'phone' => $phone,
+                    'payment_terms_days' => $terms,
+                    'status' => 'active',
+                ]);
+            }
+            DB::table('document_sequences')->insert(['tenant_id' => $tenant->id, 'type' => 'supplier', 'scope' => $tenant->id, 'current_value' => 3]);
+
+            $this->pricing($company, $gulshan, $products);
+
             // Opening stock goes through the real posting path, so the stock
             // ledger and the general ledger start out in agreement.
             app(PostStockAdjustment::class)->execute($mainWarehouse, 'opening_balance', 'Demo opening stock', array_map(
@@ -96,6 +115,36 @@ final class DemoTenantSeeder extends Seeder
                 $products,
             ));
         });
+    }
+
+    /**
+     * A running deal, a coupon and one branch-wise price, so pricing can be seen working.
+     *
+     * @param  list<Product>  $products
+     */
+    private function pricing(Company $company, Branch $gulshan, array $products): void
+    {
+        $beverages = PromotionRule::query()->create([
+            'company_id' => $company->id, 'name' => 'Beverage Fest — 10% off', 'type' => 'percentage', 'value' => '10',
+            'start_at' => now()->subDay(), 'end_at' => now()->addMonths(3), 'status' => 'active', 'requires_coupon' => false,
+        ]);
+        PromotionItem::query()->create([
+            'promotion_rule_id' => $beverages->id,
+            'category_id' => ProductCategory::query()->where('slug', 'beverages')->value('id'),
+        ]);
+
+        $welcome = PromotionRule::query()->create([
+            'company_id' => $company->id, 'name' => 'Welcome coupon — 5% off everything', 'type' => 'percentage', 'value' => '5',
+            'start_at' => now()->subDay(), 'status' => 'active', 'requires_coupon' => true,
+        ]);
+        Coupon::query()->create([
+            'company_id' => $company->id, 'code' => 'WELCOME5', 'promotion_rule_id' => $welcome->id,
+            'max_uses' => 100, 'valid_from' => now()->subDay(), 'status' => 'active',
+        ]);
+
+        // Sugar sells for a little more at the Gulshan branch.
+        $sugar = collect($products)->firstWhere('sku', 'GRO-004');
+        BranchPrice::query()->create(['branch_id' => $gulshan->id, 'product_id' => $sugar->id, 'price' => '170']);
     }
 
     /** @return array{0: Branch, 1: Warehouse} */
@@ -133,6 +182,7 @@ final class DemoTenantSeeder extends Seeder
             ['1020', 'Bank Accounts', 'asset', 'bank'],
             ['1100', 'Accounts Receivable', 'asset', 'accounts_receivable'],
             ['1200', 'Inventory', 'asset', 'inventory'],
+            ['1300', 'Input Tax Receivable', 'asset', 'purchase_tax_receivable'],
             ['1500', 'Fixed Assets', 'asset', null],
             ['2010', 'Accounts Payable', 'liability', 'accounts_payable'],
             ['2100', 'Sales Tax Payable', 'liability', 'sales_tax_payable'],

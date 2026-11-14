@@ -19,6 +19,7 @@ foreach ([
     'Inventory',
     'Finance',
     'Sales',
+    'Purchasing',
     'Reporting',
     'Integration',
 ] as $context) {

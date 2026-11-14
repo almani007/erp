@@ -18,7 +18,7 @@ final class PromotionRule extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
-    protected $fillable = ['id', 'tenant_id', 'company_id', 'name', 'type', 'value', 'conditions', 'start_at', 'end_at', 'status', 'priority'];
+    protected $fillable = ['id', 'tenant_id', 'company_id', 'name', 'type', 'value', 'conditions', 'start_at', 'end_at', 'status', 'priority', 'branch_id', 'requires_coupon'];
 
     protected function casts(): array
     {
@@ -27,6 +27,7 @@ final class PromotionRule extends Model
             'start_at' => 'datetime',
             'end_at' => 'datetime',
             'priority' => 'integer',
+            'requires_coupon' => 'boolean',
         ];
     }
 

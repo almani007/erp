@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sales\Application;
 
+use Catalog\Infrastructure\Persistence\Eloquent\Coupon;
 use Finance\Application\Dto\JournalDraft;
 use Finance\Application\Dto\JournalLineDraft;
 use Finance\Application\PostingAccounts;
@@ -56,15 +57,16 @@ final class RecordSale
         ?string $customerId,
         bool $mayOverridePrice,
         ?string $idempotencyKey,
+        ?string $couponCode = null,
     ): Sale {
-        return DB::transaction(function () use ($cashierId, $lines, $tenders, $customerId, $mayOverridePrice, $idempotencyKey): Sale {
+        return DB::transaction(function () use ($cashierId, $lines, $tenders, $customerId, $mayOverridePrice, $idempotencyKey, $couponCode): Sale {
             // Locking the shift serialises this cashier's sales with closing the shift.
             $shift = PosShift::query()->where('cashier_id', $cashierId)->where('status', 'open')->lockForUpdate()->first()
                 ?? throw ShiftNotOpen::forCashier();
             $terminal = $shift->terminal;
             $company = Company::query()->findOrFail($shift->company_id);
 
-            $priced = $this->cart->price($lines, $mayOverridePrice);
+            $priced = $this->cart->price($lines, $mayOverridePrice, $shift->branch_id, $couponCode);
             $grandTotal = $priced['grand_total'];
 
             if (! Decimal::isPositive($grandTotal)) {
@@ -93,8 +95,11 @@ final class RecordSale
                 'change_total' => $change,
                 'cost_total' => '0',
                 'idempotency_key' => $idempotencyKey,
+                'coupon_code' => $priced['coupon']?->code,
                 'sold_at' => now(),
             ]);
+
+            $this->redeemCoupon($priced['coupon']?->id);
 
             $costTotal = '0';
 
@@ -123,6 +128,7 @@ final class RecordSale
                     'net_amount' => $line['net'],
                     'line_total' => $line['total'],
                     'cost_snapshot' => $unitCost,
+                    'promotion_name' => $line['promotion_name'],
                 ]);
             }
 
@@ -150,6 +156,22 @@ final class RecordSale
 
             return $sale->load(['items', 'tenders', 'customer:id,name,customer_code']);
         });
+    }
+
+    /** Count one use of the coupon; the row lock keeps a limited coupon from being over-used. */
+    private function redeemCoupon(?string $couponId): void
+    {
+        if ($couponId === null) {
+            return;
+        }
+
+        $coupon = Coupon::query()->lockForUpdate()->findOrFail($couponId);
+
+        if ($coupon->max_uses !== null && $coupon->used_count >= $coupon->max_uses) {
+            throw new \DomainException('That coupon has just been used up.');
+        }
+
+        $coupon->increment('used_count');
     }
 
     /**

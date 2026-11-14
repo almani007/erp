@@ -38,25 +38,25 @@ final class SaleFlowTest extends TestCase
         $this->admin = User::query()->where('email', 'admin@brixelltd.com')->firstOrFail();
         Sanctum::actingAs($this->admin);
 
-        $this->product = Product::query()->where('sku', 'BEV-002')->firstOrFail(); // Cola, 100.00 + 18% tax, cost 70
+        $this->product = Product::query()->where('sku', 'HOU-002')->firstOrFail(); // Detergent: 480.00 + 18% tax, cost 390, no deal running
     }
 
     public function test_a_sale_issues_stock_and_posts_a_balanced_journal(): void
     {
         $this->openShift();
 
-        $sale = $this->sell(quantity: 2, cash: 300)->assertCreated()->json('data');
+        $sale = $this->sell(quantity: 2, cash: 1200)->assertCreated()->json('data');
 
-        $this->assertSame('236.0000', $sale['grand_total']); // 2 × 100 + 18%
-        $this->assertSame('64.0000', $sale['change_total']);
-        $this->assertSame('140.0000', $sale['cost_total']);
+        $this->assertSame('1132.8000', $sale['grand_total']); // 2 × 480 + 18%
+        $this->assertSame('67.2000', $sale['change_total']);
+        $this->assertSame('780.0000', $sale['cost_total']);
 
         $this->assertEquals(98, DB::table('stock_balances')->where('product_id', $this->product->id)->value('on_hand'));
 
         $totals = DB::table('journal_lines')->where('journal_entry_id', $sale['journal_entry_id'])
             ->selectRaw('SUM(debit) AS debit, SUM(credit) AS credit')->first();
         $this->assertSame($totals->debit, $totals->credit);
-        $this->assertEquals(376, $totals->debit); // 236 received + 140 cost of goods
+        $this->assertEquals(1912.8, $totals->debit); // 1132.80 received + 780 cost of goods
     }
 
     public function test_replaying_a_sale_with_the_same_idempotency_key_creates_one_sale(): void
@@ -64,8 +64,8 @@ final class SaleFlowTest extends TestCase
         $this->openShift();
         $key = (string) Str::uuid();
 
-        $first = $this->sell(quantity: 1, cash: 118, key: $key)->assertCreated();
-        $second = $this->sell(quantity: 1, cash: 118, key: $key)->assertCreated();
+        $first = $this->sell(quantity: 1, cash: 600, key: $key)->assertCreated();
+        $second = $this->sell(quantity: 1, cash: 600, key: $key)->assertCreated();
 
         $second->assertHeader('Idempotent-Replayed', 'true');
         $this->assertSame($first->json('data.id'), $second->json('data.id'));
@@ -77,7 +77,7 @@ final class SaleFlowTest extends TestCase
     {
         $this->openShift();
 
-        $this->sell(quantity: 101, cash: 20000)->assertStatus(422)->assertJsonPath('error.code', 'INSUFFICIENT_STOCK');
+        $this->sell(quantity: 101, cash: 100000)->assertStatus(422)->assertJsonPath('error.code', 'INSUFFICIENT_STOCK');
 
         $this->assertSame(0, DB::table('sales')->count());
         $this->assertEquals(100, DB::table('stock_balances')->where('product_id', $this->product->id)->value('on_hand'));
@@ -86,13 +86,47 @@ final class SaleFlowTest extends TestCase
     public function test_voiding_a_sale_restores_stock_and_reverses_the_journal(): void
     {
         $this->openShift();
-        $sale = $this->sell(quantity: 3, cash: 354)->json('data');
+        $sale = $this->sell(quantity: 3, cash: 1700)->json('data');
 
         $this->postJson("/api/v1/sales/{$sale['id']}/void", ['reason' => 'Customer changed mind'])
             ->assertOk()->assertJsonPath('data.status', 'voided');
 
         $this->assertEquals(100, DB::table('stock_balances')->where('product_id', $this->product->id)->value('on_hand'));
         $this->assertSame('reversed', DB::table('journal_entries')->where('id', $sale['journal_entry_id'])->value('status'));
+    }
+
+    public function test_a_partial_return_refunds_its_share_and_restocks(): void
+    {
+        $this->openShift();
+        $sale = $this->sell(quantity: 2, cash: 1200)->json('data');
+
+        $return = $this->postJson("/api/v1/sales/{$sale['id']}/returns", [
+            'reason' => 'Damaged packaging',
+            'refund_method' => 'bank',
+            'lines' => [['sale_item_id' => $sale['items'][0]['id'], 'quantity' => 1]],
+        ], ['Idempotency-Key' => (string) Str::uuid()])->assertCreated()->json('data');
+
+        $this->assertSame('566.4000', $return['grand_total']);
+        $this->assertEquals(99, DB::table('stock_balances')->where('product_id', $this->product->id)->value('on_hand'));
+
+        // Only one unit is left to return.
+        $this->postJson("/api/v1/sales/{$sale['id']}/returns", [
+            'reason' => 'Second attempt',
+            'refund_method' => 'bank',
+            'lines' => [['sale_item_id' => $sale['items'][0]['id'], 'quantity' => 2]],
+        ], ['Idempotency-Key' => (string) Str::uuid()])->assertStatus(422);
+    }
+
+    public function test_a_running_deal_and_a_coupon_reduce_the_price(): void
+    {
+        $cola = Product::query()->where('sku', 'BEV-002')->firstOrFail(); // 100.00, in the 10% beverage deal
+        $this->openShift();
+
+        $quote = $this->postJson('/api/v1/pos/quote', ['lines' => [['product_id' => $cola->id, 'quantity' => 2]]])->assertOk()->json('data');
+        $this->assertSame('20.0000', $quote['discount_total']);
+        $this->assertSame('212.4000', $quote['grand_total']); // (200 − 20) + 18%
+
+        $this->postJson('/api/v1/pos/quote', ['lines' => [['product_id' => $cola->id, 'quantity' => 1]], 'coupon_code' => 'NOPE'])->assertStatus(422);
     }
 
     public function test_posted_journal_lines_cannot_be_changed_or_deleted(): void

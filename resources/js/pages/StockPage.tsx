@@ -29,7 +29,7 @@ export default function StockPage() {
                 </Field>
                 <CheckBox text="Only items at or below reorder level" value={lowOnly} onValueChanged={(e) => setLowOnly(!!e.value)} />
             </div>
-            <TabPanel deferRendering animationEnabled={false}>
+            <TabPanel className="erp-tabs" deferRendering animationEnabled={false}>
                 <Item title="Balances">
                     <CrudGrid resource="/inventory/balances" params={params} height={GRID_HEIGHT}>
                         <Column dataField="sku" caption="SKU" width={120} />

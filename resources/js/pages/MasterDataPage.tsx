@@ -14,7 +14,7 @@ export default function MasterDataPage() {
 
     return (
         <Page title="Categories, units & tax" subtitle="Reference lists used by products">
-            <TabPanel deferRendering animationEnabled={false}>
+            <TabPanel className="erp-tabs" deferRendering animationEnabled={false}>
                 <Item title="Categories">
                     <CrudGrid resource="/categories" canAdd={canManage} canUpdate={canManage} height={GRID_HEIGHT}>
                         <Column dataField="name"><RequiredRule /></Column>

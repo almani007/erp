@@ -10,6 +10,7 @@ enum MovementType: string
     case AdjustmentOut = 'adjustment_out';
     case Sale = 'sale';
     case SaleVoid = 'sale_void';
+    case SaleReturn = 'sale_return';
     case TransferOut = 'transfer_out';
     case TransferIn = 'transfer_in';
     case PurchaseReceipt = 'purchase_receipt';

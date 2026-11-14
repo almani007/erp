@@ -25,12 +25,16 @@ final class RolesAndPermissionsSeeder extends Seeder
 
         'identity.user.view', 'identity.user.manage', 'identity.audit.view',
 
-        'catalog.product.view', 'catalog.product.manage', 'catalog.master.manage',
+        'catalog.product.view', 'catalog.product.manage', 'catalog.master.manage', 'catalog.pricing.manage',
 
         'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage',
 
         'sales.sale.view', 'sales.sale.create', 'sales.sale.void', 'sales.price.override',
         'sales.shift.manage', 'sales.customer.view', 'sales.customer.manage',
+        'sales.return.create', 'sales.payment.receive',
+
+        'purchasing.supplier.view', 'purchasing.supplier.manage', 'purchasing.order.view', 'purchasing.order.create',
+        'purchasing.order.approve', 'purchasing.receipt.create', 'purchasing.payment.create',
 
         'finance.account.view', 'finance.account.manage',
         'finance.journal.view', 'finance.journal.create', 'finance.journal.reverse',
@@ -45,21 +49,30 @@ final class RolesAndPermissionsSeeder extends Seeder
         'finance_controller' => [
             'organization.company.view', 'finance.account.view', 'finance.account.manage', 'finance.journal.view',
             'finance.journal.create', 'finance.journal.reverse', 'finance.period.manage', 'finance.report.view',
-            'sales.sale.view', 'sales.customer.view', 'inventory.stock.view', 'catalog.product.view',
+            'sales.sale.view', 'sales.customer.view', 'sales.payment.receive', 'inventory.stock.view', 'catalog.product.view',
+            'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.order.approve', 'purchasing.payment.create',
             'identity.audit.view', 'reporting.dashboard.view',
         ],
         'accountant' => [
             'organization.company.view', 'finance.account.view', 'finance.journal.view', 'finance.journal.create',
-            'finance.report.view', 'sales.sale.view', 'sales.customer.view', 'reporting.dashboard.view',
+            'finance.report.view', 'sales.sale.view', 'sales.customer.view', 'sales.payment.receive',
+            'purchasing.supplier.view', 'purchasing.order.view', 'reporting.dashboard.view',
         ],
         'branch_manager' => [
-            'catalog.product.view', 'catalog.product.manage', 'catalog.master.manage',
+            'catalog.product.view', 'catalog.product.manage', 'catalog.master.manage', 'catalog.pricing.manage',
             'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage',
-            'sales.sale.view', 'sales.sale.create', 'sales.sale.void', 'sales.price.override',
-            'sales.shift.manage', 'sales.customer.view', 'sales.customer.manage', 'reporting.dashboard.view',
+            'sales.sale.view', 'sales.sale.create', 'sales.sale.void', 'sales.price.override', 'sales.return.create',
+            'sales.shift.manage', 'sales.customer.view', 'sales.customer.manage',
+            'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.order.create', 'purchasing.receipt.create',
+            'reporting.dashboard.view',
         ],
         'inventory_controller' => [
             'catalog.product.view', 'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage',
+            'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.receipt.create',
+        ],
+        'procurement_manager' => [
+            'catalog.product.view', 'inventory.stock.view', 'purchasing.supplier.view', 'purchasing.supplier.manage',
+            'purchasing.order.view', 'purchasing.order.create', 'purchasing.order.approve', 'purchasing.receipt.create',
         ],
         'cashier' => [
             'catalog.product.view', 'sales.sale.create', 'sales.customer.view',
@@ -67,7 +80,8 @@ final class RolesAndPermissionsSeeder extends Seeder
         'auditor' => [
             'organization.company.view', 'identity.user.view', 'identity.audit.view', 'catalog.product.view',
             'inventory.stock.view', 'sales.sale.view', 'sales.customer.view', 'finance.account.view',
-            'finance.journal.view', 'finance.report.view', 'reporting.dashboard.view',
+            'finance.journal.view', 'finance.report.view', 'purchasing.supplier.view', 'purchasing.order.view',
+            'reporting.dashboard.view',
         ],
     ];
 

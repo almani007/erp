@@ -98,7 +98,7 @@ function AdjustmentForm({ onClose }: { onClose: (saved: boolean) => void }) {
                 <Column dataField="qty_delta" caption="Quantity (+/−)" dataType="number" width={160}><RequiredRule /></Column>
                 <Column dataField="unit_cost" caption="Unit cost (increases)" dataType="number" width={180} />
             </LinesGrid>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            <div className="erp-actions">
                 <Button text="Cancel" onClick={() => onClose(false)} />
                 <Button text={busy ? 'Posting…' : 'Post adjustment'} type="default" disabled={busy} onClick={save} />
             </div>

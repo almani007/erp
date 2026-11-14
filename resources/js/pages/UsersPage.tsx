@@ -8,6 +8,7 @@ import TagBox from 'devextreme-react/tag-box';
 import TextBox from 'devextreme-react/text-box';
 import { Column } from 'devextreme-react/data-grid';
 import CrudGrid from '../components/CrudGrid';
+import { statusCell } from '../components/Status';
 import Page from '../components/Page';
 import { api, getList, notifyError, notifySuccess } from '../lib/api';
 import { useCan } from '../lib/store';
@@ -28,7 +29,7 @@ export default function UsersPage() {
                 <Column dataField="email" />
                 <Column caption="Roles" calculateCellValue={(u: any) => (u.roles ?? []).join(', ')} />
                 <Column caption="Branches" calculateCellValue={(u: any) => (u.all_branches ? 'All branches' : `${u.branch_ids?.length ?? 0} selected`)} width={160} />
-                <Column dataField="status" width={120} />
+                <Column dataField="status" width={120} cellRender={statusCell} />
                 <Column dataField="last_login_at" caption="Last sign-in" dataType="datetime" width={190} />
             </CrudGrid>
             {editing && <UserForm user={editing} onClose={(saved) => { setEditing(null); if (saved) setVersion((v) => v + 1); }} />}
@@ -86,7 +87,7 @@ function UserForm({ user, onClose }: { user: any; onClose: (saved: boolean) => v
                 )}
                 {!isNew && <SelectBox label="Status" dataSource={['active', 'disabled']} value={form.status} onValueChanged={(e) => set({ status: e.value })} />}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+            <div className="erp-actions">
                 <Button text="Cancel" onClick={() => onClose(false)} />
                 <Button text={busy ? 'Saving…' : 'Save'} type="default" disabled={busy || !form.name || !form.email || (isNew && form.password.length < 10)} onClick={save} />
             </div>

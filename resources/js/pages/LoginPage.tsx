@@ -30,16 +30,33 @@ export default function LoginPage() {
 
     return (
         <div className="erp-login">
-            <form className="erp-card erp-login-card" onSubmit={submit}>
-                <div>
-                    <div className="erp-brand" style={{ fontSize: '1.5rem' }}>Brixel ERP</div>
-                    <div className="erp-muted">Sign in to continue</div>
+            <div className="erp-login-hero">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div className="erp-logo">B</div>
+                    <span style={{ fontWeight: 650, fontSize: '1.1rem' }}>Brixel ERP</span>
                 </div>
-                <TextBox label="Email" mode="email" value={email} valueChangeEvent="input" onValueChanged={(e) => setEmail(e.value)} stylingMode="outlined" />
-                <TextBox label="Password" mode="password" value={password} valueChangeEvent="input" onValueChanged={(e) => setPassword(e.value)} stylingMode="outlined" />
-                {error && <div className="erp-error">{error}</div>}
-                <Button text={busy ? 'Signing in…' : 'Sign in'} type="default" useSubmitBehavior disabled={busy || !email || !password} />
-            </form>
+                <div>
+                    <h1>Every branch, every sale, one set of books.</h1>
+                    <p>Point of sale, stock, purchasing and accounting that stay in step — each sale moves stock and posts its journal in the same instant.</p>
+                </div>
+                <div className="erp-login-points">
+                    <span>✓ Multi-company, multi-branch, multi-warehouse</span>
+                    <span>✓ Branch-wise pricing, deals and coupons</span>
+                    <span>✓ Immutable ledgers with a full audit trail</span>
+                </div>
+            </div>
+            <div className="erp-login-panel">
+                <form className="erp-login-card" onSubmit={submit}>
+                    <div>
+                        <h2 className="erp-page-title">Sign in</h2>
+                        <div className="erp-muted">Use your work email and password.</div>
+                    </div>
+                    <TextBox label="Email" mode="email" value={email} valueChangeEvent="input" onValueChanged={(e) => setEmail(e.value)} stylingMode="outlined" />
+                    <TextBox label="Password" mode="password" value={password} valueChangeEvent="input" onValueChanged={(e) => setPassword(e.value)} stylingMode="outlined" />
+                    {error && <div className="erp-error" role="alert">{error}</div>}
+                    <Button text={busy ? 'Signing in…' : 'Sign in'} type="default" height={44} useSubmitBehavior disabled={busy || !email || !password} />
+                </form>
+            </div>
         </div>
     );
 }
