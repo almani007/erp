@@ -49,6 +49,7 @@ final class ProvisionTenant
         ['5110', 'Cash Over / Short', 'expense', 'cash_over_short'],
         ['5120', 'Loyalty Redemptions', 'expense', 'loyalty_redemption'],
         ['5200', 'Salaries & Wages', 'expense', null],
+        ['5250', 'Production Costs Applied', 'expense', 'production_overhead'],
         ['5300', 'Rent', 'expense', null],
         ['5400', 'Utilities', 'expense', null],
     ];

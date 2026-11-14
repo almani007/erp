@@ -4,69 +4,53 @@ declare(strict_types=1);
 
 namespace Production\Infrastructure\Persistence\Eloquent;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Catalog\Infrastructure\Persistence\Eloquent\Product;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Production\Domain\Enum\WorkOrderStatus;
+use Organization\Infrastructure\Persistence\Eloquent\Warehouse;
+use Shared\Infrastructure\Concern\BelongsToTenant;
+use Shared\Infrastructure\Concern\HasUuid;
 
 final class ProductionOrder extends Model
 {
-    use HasUuids;
+    use BelongsToTenant;
+    use HasUuid;
+
+    public const string PLANNED = 'planned';
+
+    public const string COMPLETED = 'completed';
+
+    public const string CANCELLED = 'cancelled';
 
     protected $table = 'production_orders';
 
     protected $fillable = [
-        'tenant_id',
-        'company_id',
-        'branch_id',
-        'production_plan_id',
-        'order_no',
-        'recipe_version_id',
-        'planned_qty',
-        'actual_qty',
-        'status',
-        'planned_start',
-        'actual_start',
-        'actual_end',
-        'notes',
-        'created_by',
+        'company_id', 'warehouse_id', 'recipe_id', 'product_id', 'order_no', 'planned_quantity', 'produced_quantity', 'status',
+        'material_cost', 'extra_cost', 'unit_cost', 'batch_no', 'expiry_date', 'notes', 'journal_entry_id',
+        'created_by', 'completed_by', 'completed_at',
     ];
 
     protected function casts(): array
     {
-        return [
-            'status' => WorkOrderStatus::class,
-            'planned_qty' => 'decimal:6',
-            'actual_qty' => 'decimal:6',
-            'planned_start' => 'datetime',
-            'actual_start' => 'datetime',
-            'actual_end' => 'datetime',
-        ];
+        return ['completed_at' => 'datetime', 'expiry_date' => 'date:Y-m-d'];
     }
 
-    public function recipeVersion(): BelongsTo
+    /** @return HasMany<ProductionOrderItem, $this> */
+    public function items(): HasMany
     {
-        return $this->belongsTo(RecipeVersion::class);
+        return $this->hasMany(ProductionOrderItem::class);
     }
 
-    public function materialIssues(): HasMany
+    /** @return BelongsTo<Product, $this> */
+    public function product(): BelongsTo
     {
-        return $this->hasMany(MaterialIssue::class);
+        return $this->belongsTo(Product::class);
     }
 
-    public function outputs(): HasMany
+    /** @return BelongsTo<Warehouse, $this> */
+    public function warehouse(): BelongsTo
     {
-        return $this->hasMany(ProductionOutput::class);
-    }
-
-    public function wastage(): HasMany
-    {
-        return $this->hasMany(ProductionWastage::class);
-    }
-
-    public function qualityInspections(): HasMany
-    {
-        return $this->hasMany(QualityInspection::class);
+        return $this->belongsTo(Warehouse::class);
     }
 }

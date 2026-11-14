@@ -75,11 +75,28 @@ written for — no code change, no new tables:
    reactivates (suspension signs everyone out). Edits the templates themselves. Plans are
    enforced by the API (`module:` middleware, user / branch limits), not only by the menu.
 
+### Recipes and production
+
+Supply chain → Recipes & production. A recipe (bill of materials) lists the ingredients or
+materials for a quantity of a product, with wastage %. It is used one of two ways:
+
+- **Production order** (bakery, food unit, workshop, garment stitching): plan a quantity; on
+  completion enter what was produced, materials really used, and labour / overheads. Materials
+  leave stock at average cost, the product enters stock at (materials + extra cost) ÷ quantity,
+  with an optional batch and expiry. Extra cost is journalled to inventory against
+  "Production Costs Applied" (5250).
+- **Used up when sold** (restaurant dish, café drink): the menu item is a non-stock product; each
+  POS sale takes its ingredients out of the counter's warehouse and books their cost as cost of
+  goods sold. Voiding the sale puts them back; refunds do not (food is not resold).
+
+Demo: *Doodh Patti Chai (cup)* uses milk, tea and sugar when sold; *Sweet Lassi* is produced in
+batches of 10 from yogurt and sugar.
+
 **What this does and does not cover.** Custom records capture data and track status; they do
-not run process logic. So a restaurant can take reservations and catering orders and sell
-through the POS, but there is no table plan, modifiers or kitchen display; a workshop can log
-production batches, but materials are not consumed and finished goods are not costed
-automatically; a rental business can track agreements, but rent is not invoiced on a schedule.
+not run process logic. A restaurant now has recipe-based stock, but no table plan, modifiers or
+kitchen display; production has no routing, work centres or multi-level BOMs (a sub-assembly
+must be produced first); a rental business can track agreements, but rent is not invoiced on a
+schedule.
 HR and payroll calculation is not built. Also still missing within the retail trades: a
 size-colour stock matrix view, route / van sales, and stock-level serial tracking.
 
@@ -120,7 +137,8 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | Reporting | wired | Dashboard; drag-and-drop pivot analysis of sales by branch, cashier, category, product, customer, tier, day and hour |
 | Records | wired | Tenant-defined record types (fields, numbering, statuses, customer link) and a generic list / form for each |
 | SaaS | wired | Platform admin: provision businesses, plans (modules, features, user and branch limits), suspend / reactivate, business templates |
-| Production, CRM | partial, **not wired** | Unreviewed scaffolding from an earlier pass; no routes, not registered in `bootstrap/providers.php` |
+| Production | wired | Recipes / bills of materials with wastage, production orders (plan, complete with actual usage and overheads, cancel), recipe items that consume ingredients on sale |
+| CRM | partial, **not wired** | Unreviewed scaffolding from an earlier pass; no routes, not registered in `bootstrap/providers.php` |
 | People, Payroll, Order management, Delivery, Workflow, billing for SaaS plans, offline POS sync | not started | — |
 
 Known gaps inside the wired modules: supplier-invoice matching (the liability is booked at
@@ -133,7 +151,7 @@ in the browser of the terminal, not on the server.
 Benchmark features still to build (from the SRS list of Technosys public capabilities):
 salesperson commissions, quotations and sales orders, delivery and riders,
 restaurant tables / kitchen display / reservations, online store, feedback (Feedo-style),
-tasks and approval workflows (CAN-DO-style), HR and payroll, production and recipes,
+tasks and approval workflows (CAN-DO-style), HR and payroll,
 FBR e-invoicing, offline POS sync.
 
 ## Architecture

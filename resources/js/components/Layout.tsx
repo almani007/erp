@@ -53,6 +53,7 @@ const NAV: { section: string; links: NavLink[] }[] = [
             { text: 'Adjustments', icon: 'edit', path: '/stock-adjustments', permission: 'inventory.stock.view', module: 'inventory' },
             { text: 'Transfers', icon: 'movetofolder', path: '/stock-transfers', permission: 'inventory.stock.view', module: 'inventory' },
             { text: 'Stock counts', icon: 'checklist', path: '/stock-counts', permission: 'inventory.stock.view', module: 'inventory' },
+            { text: 'Recipes & production', icon: 'toolbox', path: '/production', permission: 'production.view', module: 'production' },
             { text: 'Batches & expiry', icon: 'event', path: '/expiry', permission: 'inventory.stock.view', feature: 'expiry', module: 'inventory' },
         ],
     },

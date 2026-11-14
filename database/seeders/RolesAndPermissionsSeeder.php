@@ -43,6 +43,8 @@ final class RolesAndPermissionsSeeder extends Seeder
         'reporting.dashboard.view', 'reporting.analytics.view',
 
         'records.view', 'records.manage',
+
+        'production.view', 'production.recipe.manage', 'production.order.manage',
     ];
 
     /** `tenant_owner` is granted everything through Gate::before, not listed grants. */
@@ -67,10 +69,11 @@ final class RolesAndPermissionsSeeder extends Seeder
             'sales.shift.manage', 'sales.customer.view', 'sales.customer.manage',
             'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.order.create', 'purchasing.receipt.create',
             'reporting.dashboard.view', 'reporting.analytics.view', 'records.view', 'records.manage',
+            'production.view', 'production.recipe.manage', 'production.order.manage',
         ],
         'inventory_controller' => [
             'catalog.product.view', 'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage',
-            'inventory.count.manage', 'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.receipt.create',
+            'inventory.count.manage', 'production.view', 'production.order.manage', 'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.receipt.create',
         ],
         'procurement_manager' => [
             'catalog.product.view', 'inventory.stock.view', 'purchasing.supplier.view', 'purchasing.supplier.manage',

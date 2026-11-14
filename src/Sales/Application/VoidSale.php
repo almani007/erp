@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sales\Application;
 
+use Production\Application\RecipeConsumption;
 use Finance\Application\ReverseJournalEntry;
 use Illuminate\Support\Facades\DB;
 use Inventory\Domain\Enum\MovementType;
@@ -67,6 +68,9 @@ final class VoidSale
                     ), (string) $item->cost_snapshot);
                 }
             }
+
+            // Ingredients of recipe items (dishes, drinks) go back too.
+            app(RecipeConsumption::class)->restoreForVoid($sale->company_id, $sale->warehouse_id, $sale->id, $reason);
 
             $onCredit = (string) $sale->tenders->where('method', PaymentMethod::Credit->value)
                 ->reduce(static fn (string $sum, $t): string => Decimal::add($sum, (string) $t->amount), '0');

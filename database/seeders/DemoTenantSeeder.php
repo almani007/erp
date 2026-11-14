@@ -26,6 +26,7 @@ use Organization\Infrastructure\Persistence\Eloquent\CustomField;
 use Organization\Infrastructure\Persistence\Eloquent\Tenant;
 use Organization\Infrastructure\Persistence\Eloquent\Warehouse;
 use Purchasing\Infrastructure\Persistence\Eloquent\Supplier;
+use Production\Infrastructure\Persistence\Eloquent\Recipe;
 use Saas\Application\ProvisionTenant;
 use Sales\Infrastructure\Persistence\Eloquent\Customer;
 use Sales\Infrastructure\Persistence\Eloquent\PosTerminal;
@@ -320,6 +321,26 @@ final class DemoTenantSeeder extends Seeder
         ]);
         ProductUnit::query()->create(['product_id' => $glass->id, 'name' => 'Dozen', 'factor' => '12', 'price' => '2640', 'wholesale_price' => '2340']);
         $products[] = $glass;
+
+        // Restaurant / café: a cup of chai holds no stock; selling it takes milk and tea leaves out.
+        $find = static fn (string $sku): Product => collect($products)->firstWhere('sku', $sku);
+        $chai = Product::query()->create([
+            'sku' => 'CAF-CHAI', 'name' => 'Doodh Patti Chai (cup)', 'product_type' => 'non_stock', 'base_unit_id' => $units['pc']->id,
+            'category_id' => $categories['Beverages']->id, 'tax_code_id' => $exempt->id, 'cost_price' => '0', 'sale_price' => '120', 'status' => 'active',
+        ]);
+        $chaiRecipe = Recipe::query()->create(['product_id' => $chai->id, 'yield_quantity' => '1', 'consume_on_sale' => true, 'status' => 'active']);
+        $chaiRecipe->items()->create(['product_id' => $find('DAI-001')->id, 'quantity' => '0.15', 'wastage_percent' => '0']);  // litres
+        $chaiRecipe->items()->create(['product_id' => $find('BEV-003')->id, 'quantity' => '0.01', 'wastage_percent' => '0']);  // packs of 475 g
+        $chaiRecipe->items()->create(['product_id' => $find('GRO-004')->id, 'quantity' => '0.015', 'wastage_percent' => '0']); // kg
+
+        // Small production: sweet lassi is made in batches of 10 bottles from yogurt and sugar.
+        $lassi = Product::query()->create([
+            'sku' => 'MFG-LASSI', 'name' => 'Sweet Lassi 500ml (made here)', 'product_type' => 'goods', 'base_unit_id' => $units['pc']->id,
+            'category_id' => $categories['Dairy']->id, 'tax_code_id' => $exempt->id, 'cost_price' => '0', 'sale_price' => '180', 'status' => 'active',
+        ]);
+        $lassiRecipe = Recipe::query()->create(['product_id' => $lassi->id, 'yield_quantity' => '10', 'consume_on_sale' => false, 'status' => 'active']);
+        $lassiRecipe->items()->create(['product_id' => $find('DAI-002')->id, 'quantity' => '10', 'wastage_percent' => '2']);
+        $lassiRecipe->items()->create(['product_id' => $find('GRO-004')->id, 'quantity' => '0.5', 'wastage_percent' => '0']);
 
         return $products;
     }

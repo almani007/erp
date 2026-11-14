@@ -13,7 +13,7 @@ use Shared\Domain\Contract\TenantContext;
  */
 final class Entitlements
 {
-    public const array MODULES = ['sales', 'catalog', 'inventory', 'purchasing', 'finance', 'reporting', 'records'];
+    public const array MODULES = ['sales', 'catalog', 'inventory', 'purchasing', 'finance', 'reporting', 'records', 'production'];
 
     /** @var array<string, mixed>|null */
     private ?array $loaded = null;

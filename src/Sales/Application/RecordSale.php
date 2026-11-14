@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sales\Application;
 
+use Production\Application\RecipeConsumption;
 use Catalog\Infrastructure\Persistence\Eloquent\Coupon;
 use Catalog\Infrastructure\Persistence\Eloquent\Product;
 use Finance\Application\Dto\JournalDraft;
@@ -118,6 +119,15 @@ final class RecordSale
                         MovementType::Sale, 'sale', $sale->id,
                     ));
                     $costTotal = Decimal::add($costTotal, Decimal::mul($line['base_quantity'], $unitCost, 2));
+                } else {
+                    // A recipe item (dish, drink): its ingredients leave stock instead.
+                    $recipeCost = app(RecipeConsumption::class)->consume(
+                        $company->id, $terminal->warehouse_id, $product->id, $line['base_quantity'], $sale->id,
+                    );
+                    if ($recipeCost !== null) {
+                        $unitCost = $recipeCost;
+                        $costTotal = Decimal::add($costTotal, Decimal::mul($line['base_quantity'], $unitCost, 2));
+                    }
                 }
 
                 $saleItem = SaleItem::query()->create([

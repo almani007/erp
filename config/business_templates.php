@@ -110,7 +110,7 @@ return [
             ['entity' => 'customer', 'label' => 'Salesman', 'type' => 'text'],
         ]],
 
-    ['code' => 'restaurant', 'name' => 'Restaurant, café & bakery', 'description' => 'Sells through the POS; reservations and kitchen notes as records. No table plan or kitchen display.',
+    ['code' => 'restaurant', 'name' => 'Restaurant, café & bakery', 'description' => 'Menu items are non-stock products with recipes, so each sale takes its ingredients out of stock. Reservations and catering as records. No table plan or kitchen display yet.',
         'features' => $f(['expiry']),
         'record_types' => [
             [
@@ -158,17 +158,16 @@ return [
             ],
         ]],
 
-    ['code' => 'manufacturing', 'name' => 'Small manufacturing & workshop', 'description' => 'Production is logged as records; it does not consume materials or cost finished goods automatically.',
-        'features' => $f(['wholesale', 'packs']),
+    ['code' => 'manufacturing', 'name' => 'Small manufacturing, bakery & workshop',
+        'description' => 'Recipes / bills of materials and production orders under Supply chain → Recipes & production.',
+        'features' => $f(['wholesale', 'packs', 'expiry']),
         'record_types' => [[
-            'name' => 'Production batch', 'prefix' => 'PRD', 'statuses' => 'Planned, In production, Finished',
+            'name' => 'Customer order', 'prefix' => 'CO', 'link_customer' => true, 'statuses' => 'Received, In production, Ready, Delivered',
             'fields' => [
-                ['label' => 'Product made', 'type' => 'text', 'required' => true],
-                ['label' => 'Quantity planned', 'type' => 'number', 'required' => true],
-                ['label' => 'Quantity produced', 'type' => 'number'],
-                ['label' => 'Materials used', 'type' => 'longtext'],
-                ['label' => 'Wastage', 'type' => 'number'],
-                ['label' => 'Production date', 'type' => 'date'],
+                ['label' => 'Items ordered', 'type' => 'longtext', 'required' => true],
+                ['label' => 'Delivery date', 'type' => 'date', 'required' => true],
+                ['label' => 'Amount', 'type' => 'money'],
+                ['label' => 'Advance received', 'type' => 'money'],
             ],
         ]]],
 
