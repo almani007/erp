@@ -90,7 +90,9 @@ function SaleDetail({ saleId, onClose }: { saleId: string; onClose: (changed: bo
         setBusy(true);
         try {
             const { data: saved } = await api.post(`/sales/${saleId}/returns`, { reason: returnReason, refund_method: refundMethod, lines: returnLines }, idempotent(returnKey.current));
-            notifySuccess(`Return ${saved.data.return_no} recorded — refund ${money(saved.data.grand_total)}`);
+            notifySuccess(saved.data.voucher_code
+                ? `Return ${saved.data.return_no} recorded — store credit voucher ${saved.data.voucher_code} for ${money(saved.data.grand_total)}. Give the number to the customer.`
+                : `Return ${saved.data.return_no} recorded — refund ${money(saved.data.grand_total)}`);
             onClose(true);
         } catch (e) {
             notifyError(e);
@@ -145,7 +147,7 @@ function SaleDetail({ saleId, onClose }: { saleId: string; onClose: (changed: bo
                             <div className="erp-row" style={{ marginTop: 12, marginBottom: 0 }}>
                                 <SelectBox
                                     label="Refund by" width={190} value={refundMethod} valueExpr="id" displayExpr="name" onValueChanged={(e) => setRefundMethod(e.value)}
-                                    dataSource={[{ id: 'cash', name: 'Cash (from my shift)' }, { id: 'bank', name: 'Bank' }, ...(data.customer ? [{ id: 'account', name: 'Credit to account' }] : [])]}
+                                    dataSource={[{ id: 'cash', name: 'Cash (from my shift)' }, { id: 'bank', name: 'Bank' }, { id: 'voucher', name: 'Store credit voucher' }, ...(data.customer ? [{ id: 'account', name: 'Credit to account' }] : [])]}
                                 />
                                 <TextBox label="Reason (required)" width={260} value={returnReason} valueChangeEvent="input" onValueChanged={(e) => setReturnReason(e.value)} />
                                 <CheckBox text="Put back into stock" value={restock} onValueChanged={(e) => setRestock(!!e.value)} />

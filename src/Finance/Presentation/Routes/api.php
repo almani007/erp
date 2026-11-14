@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Finance\Presentation\Http\Controller\AccountController;
 use Finance\Presentation\Http\Controller\AccountingToolsController;
+use Finance\Presentation\Http\Controller\CurrencyController;
 use Finance\Presentation\Http\Controller\FinancialReportController;
 use Finance\Presentation\Http\Controller\JournalController;
 use Finance\Presentation\Http\Controller\PeriodController;
@@ -51,4 +52,14 @@ Route::middleware(['auth:sanctum', 'module:finance'])->group(function (): void {
     Route::get('year-end-closings', [AccountingToolsController::class, 'closings'])->middleware('permission:finance.account.view');
     Route::post('year-end-closings', [AccountingToolsController::class, 'closeYear'])->middleware('permission:finance.year.close');
     Route::post('year-end-closings/{id}/reopen', [AccountingToolsController::class, 'reopenYear'])->middleware('permission:finance.year.close');
+
+    // Foreign currencies, exchange rates and period-end revaluation.
+    Route::get('currencies', [CurrencyController::class, 'index'])->middleware('permission:finance.account.view|purchasing.payment.create|purchasing.bill.manage');
+    Route::post('currencies', [CurrencyController::class, 'save'])->middleware('permission:finance.currency.manage');
+    Route::put('currencies/{id}', [CurrencyController::class, 'save'])->middleware('permission:finance.currency.manage');
+    Route::get('exchange-rates', [CurrencyController::class, 'rates'])->middleware('permission:finance.account.view|purchasing.payment.create|purchasing.bill.manage');
+    Route::post('exchange-rates', [CurrencyController::class, 'storeRates'])->middleware('permission:finance.currency.manage');
+    Route::get('fx/exposure', [CurrencyController::class, 'exposure'])->middleware('permission:finance.report.view');
+    Route::get('fx/revaluations', [CurrencyController::class, 'revaluations'])->middleware('permission:finance.report.view');
+    Route::post('fx/revaluations', [CurrencyController::class, 'revalue'])->middleware('permission:finance.fx.revalue');
 });

@@ -51,6 +51,7 @@ const METHODS = [
     { id: 'bank_transfer', name: 'Bank transfer' },
     { id: 'wallet', name: 'Wallet' },
     { id: 'credit', name: 'On account' },
+    { id: 'gift_card', name: 'Gift card / voucher' },
 ];
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -489,6 +490,26 @@ function Payment({ cart, total, customerId, coupon, wholesale, points, pointValu
     const change = Math.max(0, round2(paid - total));
     const quickCash = [...new Set([total, Math.ceil(total / 100) * 100, Math.ceil(total / 500) * 500, Math.ceil(total / 1000) * 1000])].filter((v) => v > 0);
 
+    // Shows a gift card's balance and fills in what it can cover.
+    const checkCard = async () => {
+        if (!reference) return;
+        try {
+            const { data } = await api.get(`/gift-cards/lookup/${encodeURIComponent(reference.trim())}`);
+            const card = data.data;
+            const already = tenders.filter((t) => t.method === 'gift_card' && t.reference?.toUpperCase() === card.code).reduce((s, t) => s + t.amount, 0);
+            const left = round2(Number(card.balance) - already);
+            if (card.status !== 'active' || left <= 0) {
+                notifyError(new Error(`Card ${card.code} is ${card.status === 'active' ? 'used up' : card.status}.`));
+                return;
+            }
+            setReference(card.code);
+            setAmount(Math.min(left, remaining || amount));
+            notifySuccess(`Card ${card.code}: ${money(left)} available${card.expires_on ? `, valid until ${card.expires_on}` : ''}.`);
+        } catch (e) {
+            notifyError(e);
+        }
+    };
+
     const addTender = (tender: Tender) => {
         if (tender.amount <= 0) {
             return;
@@ -533,10 +554,14 @@ function Payment({ cart, total, customerId, coupon, wholesale, points, pointValu
                     }}
                 />
                 <NumberBox label="Amount" width={140} value={amount} min={0} max={method === 'loyalty' ? pointsWorth : undefined} format="#,##0.00" onValueChanged={(e) => setAmount(e.value ?? 0)} />
-                {method !== 'cash' && method !== 'credit' && method !== 'loyalty' && (
+                {method !== 'cash' && method !== 'credit' && method !== 'loyalty' && method !== 'gift_card' && (
                     <TextBox label="Reference" width={130} value={reference} onValueChanged={(e) => setReference(e.value)} />
                 )}
-                <Button text="Add" stylingMode="outlined" onClick={() => addTender({ method, amount, reference: reference || undefined })} />
+                {method === 'gift_card' && (
+                    <TextBox label="Card number" width={170} value={reference} onValueChanged={(e) => setReference(e.value)} onEnterKey={checkCard} />
+                )}
+                {method === 'gift_card' && <Button icon="search" hint="Check balance" stylingMode="outlined" disabled={!reference} onClick={checkCard} />}
+                <Button text="Add" stylingMode="outlined" disabled={method === 'gift_card' && !reference} onClick={() => addTender({ method, amount, reference: reference || undefined })} />
             </div>
             {method === 'credit' && !customerId && <div className="erp-error">Select a customer on the sale to sell on account.</div>}
             {tenders.map((t, i) => (

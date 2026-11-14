@@ -268,6 +268,27 @@ final class DemoTenantSeeder extends Seeder
             'date' => now()->toDateString(), 'kind' => 'advance', 'amount' => '15000', 'installment' => '5000', 'paid_from' => 'cash',
             'note' => 'Demo: recovered over three months',
         ]);
+
+        // Leave: a public holiday and an approved day of annual leave (written into attendance).
+        \People\Infrastructure\Persistence\Eloquent\Holiday::query()->firstOrCreate(['date' => now()->year.'-12-25', 'branch_id' => null], ['name' => 'Quaid-e-Azam Day']);
+        $annual = \People\Infrastructure\Persistence\Eloquent\LeaveType::query()->where('code', 'AL')->first();
+        if ($annual !== null) {
+            $leaves = app(\People\Application\ManageLeave::class);
+            $day = now()->subDays(3)->isSunday() ? now()->subDays(4) : now()->subDays(3);
+            $request = $leaves->request(['employee_id' => $employees['EMP-003']->id, 'leave_type_id' => $annual->id,
+                'from_date' => $day->toDateString(), 'to_date' => $day->toDateString(), 'reason' => 'Demo: family event']);
+            $leaves->decide($request->id, true, 'Enjoy');
+        }
+
+        // Foreign currencies with rates, for importers paying suppliers in USD / CNY.
+        foreach ([['USD', 'US Dollar', '$', '278.50'], ['CNY', 'Chinese Yuan', '¥', '38.60'], ['AED', 'UAE Dirham', 'AED', '75.80']] as [$code, $name, $symbol, $rate]) {
+            \Finance\Infrastructure\Persistence\Eloquent\Currency::query()->create(['code' => $code, 'name' => $name, 'symbol' => $symbol, 'status' => 'active']);
+            \Finance\Infrastructure\Persistence\Eloquent\ExchangeRate::query()->create(['company_id' => $company->id, 'currency' => $code, 'rate_date' => now()->subDays(30)->toDateString(), 'rate' => $rate, 'source' => 'demo']);
+        }
+
+        // A gift card sold for cash, ready to spend at the till.
+        app(\Sales\Application\GiftCards::class)->issue(['company_id' => $company->id, 'branch_id' => $headOffice->id, 'kind' => 'gift_card',
+            'value' => '5000', 'paid_by' => 'cash', 'code' => 'GC-DEMO-5000', 'note' => 'Demo card']);
     }
 
     /** @return list<Product> */

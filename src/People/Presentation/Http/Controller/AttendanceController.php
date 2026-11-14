@@ -15,7 +15,7 @@ use Shared\Infrastructure\Validation\TenantRule;
 /** The daily register: one sheet per day, every working employee on it. */
 final class AttendanceController
 {
-    public const array STATUSES = ['present', 'absent', 'leave', 'half_day', 'holiday'];
+    public const array STATUSES = ['present', 'absent', 'leave', 'unpaid_leave', 'half_day', 'holiday'];
 
     public function sheet(Request $request, BranchContext $branches): JsonResponse
     {
@@ -32,10 +32,15 @@ final class AttendanceController
             ->orderBy('code')->get(['id', 'code', 'name', 'designation', 'department', 'branch_id']);
 
         $marked = Attendance::query()->where('date', $date)->whereIn('employee_id', $employees->pluck('id'))->get()->keyBy('employee_id');
+        // Unmarked rows are pre-filled with the holiday, so the sheet only needs the exceptions.
+        $holidays = DB::table('holidays')->where('tenant_id', app(\Shared\Domain\Contract\TenantContext::class)->requireId())
+            ->where('date', $date)->get(['branch_id', 'name']);
+        $holidayFor = static fn (?string $branch): ?string => $holidays->first(fn ($h) => $h->branch_id === null || $h->branch_id === $branch)?->name;
 
         return new JsonResponse(['data' => $employees->map(fn (Employee $e): array => [
             'employee_id' => $e->id, 'code' => $e->code, 'name' => $e->name, 'designation' => $e->designation, 'department' => $e->department,
-            'status' => $marked[$e->id]->status ?? null,
+            'status' => $marked[$e->id]->status ?? ($holidayFor($e->branch_id) !== null ? 'holiday' : null),
+            'holiday' => $holidayFor($e->branch_id),
             'overtime_hours' => $marked[$e->id]->overtime_hours ?? '0',
             'note' => $marked[$e->id]->note ?? null,
         ])->values()]);
@@ -77,6 +82,7 @@ final class AttendanceController
                 sum(case when status = 'present' then 1 else 0 end) as present,
                 sum(case when status = 'absent' then 1 else 0 end) as absent,
                 sum(case when status = 'leave' then 1 else 0 end) as leave,
+                sum(case when status = 'unpaid_leave' then 1 else 0 end) as unpaid_leave,
                 sum(case when status = 'half_day' then 1 else 0 end) as half_day,
                 sum(case when status = 'holiday' then 1 else 0 end) as holiday,
                 sum(overtime_hours) as overtime_hours")

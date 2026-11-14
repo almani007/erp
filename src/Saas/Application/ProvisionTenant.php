@@ -44,17 +44,22 @@ final class ProvisionTenant
         ['2300', 'Salaries Payable', 'liability', 'salaries_payable'],
         ['2310', 'Payroll Deductions Payable', 'liability', 'payroll_deductions_payable'],
         ['2400', 'Customer Deposits Held', 'liability', 'customer_deposits'],
+        ['2410', 'Gift Cards & Vouchers Outstanding', 'liability', 'gift_card_liability'],
         ['3010', "Owner's Capital", 'equity', null],
         ['3020', 'Retained Earnings', 'equity', 'retained_earnings'],
         ['3900', 'Opening Balance Equity', 'equity', 'opening_balance_equity'],
         ['4010', 'Sales Revenue', 'revenue', 'sales_revenue'],
         ['4900', 'Other Income', 'revenue', null],
         ['4950', 'Gain / Loss on Asset Disposal', 'revenue', 'asset_disposal'],
+        ['4960', 'Gift Card Breakage (expired value)', 'revenue', 'gift_card_breakage'],
+        ['4970', 'Exchange Gain / Loss — Realised', 'revenue', 'fx_realized'],
+        ['4975', 'Exchange Gain / Loss — Unrealised', 'revenue', 'fx_unrealized'],
         ['5010', 'Cost of Goods Sold', 'expense', 'cost_of_goods_sold'],
         ['5100', 'Inventory Adjustments', 'expense', 'inventory_adjustment'],
         ['5110', 'Cash Over / Short', 'expense', 'cash_over_short'],
         ['5120', 'Loyalty Redemptions', 'expense', 'loyalty_redemption'],
         ['5130', 'Purchase Price Variance', 'expense', 'purchase_price_variance'],
+        ['5140', 'Promotional Vouchers', 'expense', 'promotional_vouchers'],
         ['5200', 'Salaries & Wages', 'expense', 'salaries_expense'],
         ['5250', 'Production Costs Applied', 'expense', 'production_overhead'],
         ['5300', 'Rent', 'expense', null],
@@ -165,6 +170,15 @@ final class ProvisionTenant
                 'id' => (string) \Illuminate\Support\Str::uuid7(), 'tenant_id' => $company->tenant_id, 'company_id' => $company->id,
                 'account_id' => DB::table('posting_accounts')->where('company_id', $company->id)->where('key', $key)->value('account_id'),
                 'kind' => $key, 'name' => $name, 'is_default' => true, 'status' => 'active', 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        // Common leave types; each business edits the allowances to its own policy.
+        foreach ([['AL', 'Annual leave', true, '0', true, '7'], ['SL', 'Sick leave', true, '8', false, '0'], ['CL', 'Casual leave', true, '10', false, '0'], ['UL', 'Unpaid leave', false, '0', false, '0']] as [$code, $name, $paid, $days, $useEmployee, $carry]) {
+            DB::table('leave_types')->insertOrIgnore([
+                'id' => (string) \Illuminate\Support\Str::uuid7(), 'tenant_id' => $company->tenant_id, 'code' => $code, 'name' => $name,
+                'paid' => $paid, 'days_per_year' => $days, 'use_employee_days' => $useEmployee, 'carry_forward_max' => $carry,
+                'allow_half_day' => true, 'status' => 'active', 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
 

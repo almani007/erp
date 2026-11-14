@@ -43,3 +43,9 @@ Schedule::command('workflow:alerts')->dailyAt('07:40')->withoutOverlapping();
 Schedule::call(static fn () => DB::table('idempotency_records')->where('expires_at', '<', now())->delete())
     ->daily()
     ->name('prune-idempotency-records');
+
+// Gift cards past their expiry date: the unspent value becomes income.
+Artisan::command('sales:expire-gift-cards', function (Sales\Application\GiftCards $cards): void {
+    $this->info('Expired '.$cards->expireDue().' gift cards.');
+})->purpose('Expire gift cards past their date');
+Schedule::command('sales:expire-gift-cards')->dailyAt('00:40')->withoutOverlapping();

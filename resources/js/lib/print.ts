@@ -82,3 +82,13 @@ export function printDocument(opts: {
     </body></html>`);
     w.document.close();
 }
+
+/** Free-form printout (labels, cards) in a new window. `body` must already be escaped. */
+export function printHtml(title: string, body: string) {
+    const w = window.open('', '_blank', 'width=900,height=1000');
+    if (!w) return;
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
+        <style>@page { size: A4; margin: 12mm; } body { font: 12px/1.45 "Segoe UI", system-ui, sans-serif; color: #1f2937; margin: 0; padding: 16px; }</style>
+        </head><body>${body}<script>window.onload = () => setTimeout(() => window.print(), 300);</script></body></html>`);
+    w.document.close();
+}

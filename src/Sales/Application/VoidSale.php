@@ -92,6 +92,9 @@ final class VoidSale
             // The units are back on the shelf, so their serials can be sold again.
             DB::table('sold_serials')->where('sale_id', $sale->id)->delete();
 
+            // Value taken from gift cards goes back on the cards.
+            app(GiftCards::class)->reverseFor('sale', $sale->id);
+
             // Give back the points spent and take back the points earned.
             $pointsBack = (int) $sale->points_redeemed - (int) $sale->points_earned;
             if ($sale->customer_id !== null && $pointsBack !== 0) {

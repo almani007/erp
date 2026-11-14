@@ -40,6 +40,7 @@ const NAV: { section: string; links: NavLink[] }[] = [
             { text: 'Quotations & orders', icon: 'textdocument', path: '/sales-documents', permission: 'sales.order.view', module: 'sales' },
             { text: 'Receivables', icon: 'money', path: '/receivables', permission: 'sales.receivable.view', module: 'sales' },
             { text: 'Customers', icon: 'group', path: '/customers', permission: 'sales.customer.view', module: 'sales' },
+            { text: 'Gift cards & vouchers', icon: 'card', path: '/gift-cards', permission: 'sales.giftcard.manage', module: 'sales' },
             { text: 'Price checker', icon: 'search', path: '/price-checker', permission: 'catalog.product.view', module: 'catalog' },
             { text: 'Serial & warranty', icon: 'tags', path: '/serials', permission: 'sales.sale.view', feature: 'serials', module: 'sales' },
         ],
@@ -72,8 +73,10 @@ const NAV: { section: string; links: NavLink[] }[] = [
             { text: 'Financial reports', icon: 'chart', path: '/reports', permission: 'finance.report.view', module: 'finance' },
             { text: 'Accounting tools', icon: 'chart', path: '/accounting-tools', permission: 'finance.report.view', module: 'finance' },
             { text: 'Banking & cheques', icon: 'card', path: '/banking', permission: 'banking.view', module: 'finance' },
+            { text: 'Currencies & exchange', icon: 'globe', path: '/currencies', permission: 'finance.account.view', module: 'finance' },
             { text: 'Fixed assets', icon: 'box', path: '/assets', permission: 'assets.view', module: 'assets' },
             { text: 'HR & payroll', icon: 'group', path: '/people', permission: 'people.employee.view', module: 'people' },
+            { text: 'Leave', icon: 'event', path: '/leave', permission: 'people.leave.request', module: 'people' },
         ],
     },
     {

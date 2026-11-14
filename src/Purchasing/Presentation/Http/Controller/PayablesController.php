@@ -63,7 +63,10 @@ final class PayablesController
             'expenses.*.amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
             'expenses.*.tax_amount' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'currency' => ['nullable', 'string', 'size:3'],
+            'fx_rate' => ['nullable', 'numeric', 'gt:0', 'decimal:0,8'],
         ]);
+        $data['fx_rate'] = isset($data['fx_rate']) ? (string) $data['fx_rate'] : null;
 
         $companyId = $data['company_id'] ?? Company::query()->orderBy('created_at')->value('id');
         $data['invoice_goods_amount'] = isset($data['invoice_goods_amount']) ? (string) $data['invoice_goods_amount'] : null;
@@ -159,7 +162,7 @@ final class PayablesController
     public function openBills(string $supplierId): JsonResponse
     {
         return new JsonResponse(['data' => SupplierBill::query()->where('supplier_id', $supplierId)->where('balance_due', '>', 0)
-            ->orderBy('due_date')->get(['id', 'bill_no', 'supplier_invoice_no', 'bill_date', 'due_date', 'grand_total', 'balance_due'])]);
+            ->orderBy('due_date')->get(['id', 'bill_no', 'supplier_invoice_no', 'bill_date', 'due_date', 'grand_total', 'balance_due', 'currency', 'fx_rate', 'foreign_total', 'foreign_balance_due'])]);
     }
 
     /** Receipts of goods, bill differences and expenses, debit notes and payments, with a running balance. */

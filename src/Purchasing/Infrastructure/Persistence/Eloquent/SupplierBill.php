@@ -15,7 +15,7 @@ final class SupplierBill extends Model
 
     protected $table = 'supplier_bills';
 
-    protected $fillable = ['company_id', 'branch_id', 'supplier_id', 'bill_no', 'supplier_invoice_no', 'bill_date', 'due_date', 'received_value', 'variance', 'expense_total', 'expense_tax', 'grand_total', 'balance_due', 'status', 'notes', 'journal_entry_id', 'created_by'];
+    protected $fillable = ['company_id', 'branch_id', 'supplier_id', 'bill_no', 'supplier_invoice_no', 'bill_date', 'due_date', 'received_value', 'variance', 'expense_total', 'expense_tax', 'grand_total', 'balance_due', 'status', 'notes', 'journal_entry_id', 'created_by', 'currency', 'fx_rate', 'foreign_total', 'foreign_balance_due'];
 
     protected function casts(): array
     {

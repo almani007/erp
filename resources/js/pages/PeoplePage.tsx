@@ -30,8 +30,8 @@ interface Line {
 interface Run { id: string; run_no: string; period: string; status: string; gross_total: string; net_total: string; deduction_total: string; lines_count?: number; lines?: Line[] }
 
 const STATUSES = [
-    { id: 'present', name: 'Present' }, { id: 'absent', name: 'Absent' }, { id: 'leave', name: 'Leave' },
-    { id: 'half_day', name: 'Half day' }, { id: 'holiday', name: 'Holiday' },
+    { id: 'present', name: 'Present' }, { id: 'absent', name: 'Absent' }, { id: 'leave', name: 'Paid leave' },
+    { id: 'unpaid_leave', name: 'Unpaid leave' }, { id: 'half_day', name: 'Half day' }, { id: 'holiday', name: 'Holiday' },
 ];
 
 /** Staff, the daily register, advances and loans, and monthly payroll. */

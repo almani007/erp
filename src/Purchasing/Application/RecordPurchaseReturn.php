@@ -123,7 +123,15 @@ final class RecordPurchaseReturn
                 if ($bill !== null) {
                     $less = Decimal::cmp($total, (string) $bill->balance_due) > 0 ? (string) $bill->balance_due : $total;
                     $due = Decimal::sub((string) $bill->balance_due, $less, 2);
-                    $bill->update(['balance_due' => $due, 'status' => Decimal::isPositive($due) ? 'open' : 'paid']);
+                    $update = ['balance_due' => $due, 'status' => Decimal::isPositive($due) ? 'open' : 'paid'];
+                    // Foreign bill: the foreign balance falls by the same amount at the bill's rate.
+                    if ($bill->currency !== null && $bill->fx_rate !== null) {
+                        $foreignDue = Decimal::isPositive($due)
+                            ? Decimal::sub((string) $bill->foreign_balance_due, \Finance\Application\ExchangeRates::toForeign($less, (string) $bill->fx_rate), 2)
+                            : '0';
+                        $update['foreign_balance_due'] = Decimal::isNegative($foreignDue) ? '0' : $foreignDue;
+                    }
+                    $bill->update($update);
                 }
             }
 

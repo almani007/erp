@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Button from 'devextreme-react/button';
 import { Column, Lookup, RequiredRule } from 'devextreme-react/data-grid';
 import CrudGrid from '../components/CrudGrid';
 import { customColumns, useCustomFields } from '../components/CustomColumns';
 import PaymentPopup from '../components/PaymentPopup';
 import Page from '../components/Page';
+import { getOne } from '../lib/api';
 import { numberColumn } from '../lib/format';
 import { useCan, useCompanyId } from '../lib/store';
 
@@ -15,6 +17,7 @@ export default function SuppliersPage() {
     const customFields = useCustomFields('supplier');
     const [selected, setSelected] = useState<string | null>(null);
     const [version, setVersion] = useState(0);
+    const currencies = useQuery({ queryKey: ['currencies'], queryFn: () => getOne<any>('/currencies'), staleTime: 60000, retry: false }).data?.currencies ?? [];
 
     return (
         <Page title="Suppliers" subtitle="Balance is what you owe for goods received, less payments">
@@ -27,6 +30,11 @@ export default function SuppliersPage() {
                 <Column dataField="address" visible={false} />
                 <Column dataField="tax_no" caption="Tax no." width={140} />
                 <Column dataField="payment_terms_days" caption="Terms (days)" dataType="number" width={130} />
+                {currencies.length > 0 && (
+                    <Column dataField="currency" caption="Bills in" width={100}>
+                        <Lookup dataSource={currencies.map((c: any) => c.code)} allowClearing />
+                    </Column>
+                )}
                 <Column {...numberColumn('balance')} caption="We owe" allowEditing={false} />
                 {customColumns(customFields)}
                 <Column dataField="status" width={120}><Lookup dataSource={['active', 'inactive']} /></Column>

@@ -15,5 +15,5 @@ final class SupplierPaymentAllocation extends Model
 
     protected $table = 'supplier_payment_allocations';
 
-    protected $fillable = ['supplier_payment_id', 'supplier_bill_id', 'amount'];
+    protected $fillable = ['supplier_payment_id', 'supplier_bill_id', 'amount', 'foreign_amount'];
 }

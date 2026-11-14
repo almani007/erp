@@ -6,6 +6,7 @@ namespace Purchasing\Application;
 
 use Finance\Application\Dto\JournalDraft;
 use Finance\Application\Dto\JournalLineDraft;
+use Finance\Application\ExchangeRates;
 use Finance\Application\PostingAccounts;
 use Finance\Application\PostJournalEntry;
 use Finance\Infrastructure\Persistence\Eloquent\Account;
@@ -32,6 +33,11 @@ use Shared\Domain\Support\Decimal;
  *
  * A difference beyond the tolerance setting (purchasing.variance_tolerance_percent,
  * default 2 %) needs the purchasing.bill.override permission.
+ *
+ * Foreign-currency bills: the invoice and expense amounts are entered in the
+ * supplier's currency and booked in base currency at the bill's rate (given,
+ * or the rate in force on the bill date). The bill keeps its foreign total and
+ * foreign balance; paying it at a different rate books an exchange gain/loss.
  */
 final class RecordSupplierBill
 {
@@ -73,6 +79,30 @@ final class RecordSupplierBill
             $received = '0';
             foreach ($receipts as $grn) {
                 $received = Decimal::add($received, Decimal::sub((string) $grn->grand_total, (string) $grn->returned_total, 2), 2);
+            }
+
+            // Foreign currency: convert what the supplier invoiced into base currency.
+            $rates = app(ExchangeRates::class);
+            $currency = isset($data['currency']) && $rates->isForeign($companyId, $data['currency']) ? strtoupper($data['currency']) : null;
+            $fxRate = null;
+            $foreignTotal = null;
+            if ($currency !== null) {
+                $fxRate = isset($data['fx_rate']) && $data['fx_rate'] !== null && $data['fx_rate'] !== ''
+                    ? (string) $data['fx_rate'] : $rates->rate($companyId, $currency, $data['bill_date']);
+                if (! Decimal::isPositive($fxRate)) {
+                    throw new \DomainException('The exchange rate must be greater than zero.');
+                }
+                $foreignGoods = $receipts->isEmpty() ? '0'
+                    : (isset($data['invoice_goods_amount']) && $data['invoice_goods_amount'] !== null ? Decimal::round($data['invoice_goods_amount'], 2) : ExchangeRates::toForeign($received, $fxRate));
+                $foreignTotal = $foreignGoods;
+                if (! $receipts->isEmpty()) {
+                    $data['invoice_goods_amount'] = ExchangeRates::toBase($foreignGoods, $fxRate);
+                }
+                foreach ($data['expenses'] as $i => $line) {
+                    $foreignTotal = Decimal::add($foreignTotal, Decimal::add(Decimal::round($line['amount'], 2), Decimal::round($line['tax_amount'] ?? '0', 2), 2), 2);
+                    $data['expenses'][$i]['amount'] = ExchangeRates::toBase(Decimal::round($line['amount'], 2), $fxRate);
+                    $data['expenses'][$i]['tax_amount'] = ExchangeRates::toBase(Decimal::round($line['tax_amount'] ?? '0', 2), $fxRate);
+                }
             }
 
             $invoiceGoods = isset($data['invoice_goods_amount']) && $data['invoice_goods_amount'] !== null
@@ -119,6 +149,10 @@ final class RecordSupplierBill
                 'expense_tax' => $expenseTax,
                 'grand_total' => $grand,
                 'balance_due' => $grand,
+                'currency' => $currency,
+                'fx_rate' => $fxRate,
+                'foreign_total' => $foreignTotal,
+                'foreign_balance_due' => $foreignTotal,
                 'status' => 'open',
                 'notes' => $data['notes'] ?? null,
                 'created_by' => $actorId,

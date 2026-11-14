@@ -36,7 +36,7 @@ use Shared\Domain\Support\Decimal;
  */
 final class RecordSaleReturn
 {
-    public const array REFUND_METHODS = ['cash', 'bank', 'account'];
+    public const array REFUND_METHODS = ['cash', 'bank', 'account', 'voucher'];
 
     public function __construct(
         private readonly StockLedger $stock,
@@ -153,6 +153,7 @@ final class RecordSaleReturn
             $refundAccount = match ($refundMethod) {
                 'cash' => 'cash',
                 'bank' => 'bank',
+                'voucher' => 'gift_card_liability', // store credit
                 default => 'accounts_receivable',
             };
 
@@ -174,9 +175,14 @@ final class RecordSaleReturn
                 ],
             ));
 
+            $voucherCode = null;
+            if ($refundMethod === 'voucher') {
+                $voucherCode = app(GiftCards::class)->issueStoreCredit($sale->company_id, $sale->branch_id, $total, $sale->customer_id, $return->id, $return->return_no)->code;
+            }
+
             $return->update([
                 'net_total' => $net, 'tax_total' => $tax, 'grand_total' => $total, 'cost_total' => $cost,
-                'journal_entry_id' => $journal->id,
+                'journal_entry_id' => $journal->id, 'voucher_code' => $voucherCode,
             ]);
 
             $this->audit->record('sales.return.recorded', 'sales_return', $return->id, null, [

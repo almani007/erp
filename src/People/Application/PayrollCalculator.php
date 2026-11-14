@@ -16,7 +16,8 @@ use Shared\Domain\Support\Decimal;
  * Monthly staff: full salary and allowances, less a day's pay for each
  * absent day (and for days before joining / after leaving). A day's pay is
  * (salary + allowances) ÷ the month-days setting (30 by default).
- * Daily wagers: daily rate × days worked (present, leave, holiday; half day = ½).
+ * Daily wagers: daily rate × days worked (present, paid leave, holiday; half day = ½).
+ * Unpaid leave counts as an absent day for both.
  * Overtime: hourly rate × hours × the overtime-rate setting.
  *
  * The rules are settings (group `payroll`): month_days, hours_per_day,
@@ -44,8 +45,8 @@ final class PayrollCalculator
         $absentFromRegister = '0';
         $workedFromRegister = '0';
         foreach ($attendance as $day) {
-            $absentFromRegister = Decimal::add($absentFromRegister, match ($day->status) { 'absent' => '1', 'half_day' => '0.5', default => '0' }, 2);
-            $workedFromRegister = Decimal::add($workedFromRegister, match ($day->status) { 'absent' => '0', 'half_day' => '0.5', default => '1' }, 2);
+            $absentFromRegister = Decimal::add($absentFromRegister, match ($day->status) { 'absent', 'unpaid_leave' => '1', 'half_day' => '0.5', default => '0' }, 2);
+            $workedFromRegister = Decimal::add($workedFromRegister, match ($day->status) { 'absent', 'unpaid_leave' => '0', 'half_day' => '0.5', default => '1' }, 2);
         }
         $overtimeFromRegister = Decimal::sum($attendance, 'overtime_hours', 2);
 

@@ -57,12 +57,16 @@ final class RolesAndPermissionsSeeder extends Seeder
 
         'people.employee.view', 'people.employee.manage', 'people.attendance.manage',
         'people.payroll.manage', 'people.payroll.approve',
+        'people.leave.request', 'people.leave.manage', 'people.leave.approve',
+        'sales.giftcard.manage', 'sales.giftcard.promote',
+        'finance.currency.manage', 'finance.fx.revalue',
     ];
 
     /** `tenant_owner` is granted everything through Gate::before, not listed grants. */
     private const array ROLES = [
         'tenant_owner' => [],
         'finance_controller' => [
+            'finance.currency.manage', 'finance.fx.revalue', 'people.leave.request',
             'organization.company.view', 'finance.account.view', 'finance.account.manage', 'finance.journal.view',
             'finance.journal.create', 'finance.journal.reverse', 'finance.period.manage', 'finance.report.view', 'finance.voucher.create',
             'sales.sale.view', 'sales.customer.view', 'sales.payment.receive', 'sales.receivable.view', 'sales.order.view', 'inventory.stock.view', 'catalog.product.view',
@@ -75,6 +79,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'people.employee.view', 'people.payroll.approve',
         ],
         'accountant' => [
+            'finance.currency.manage', 'people.leave.request',
             'organization.company.view', 'finance.account.view', 'finance.journal.view', 'finance.journal.create',
             'finance.voucher.create', 'finance.report.view', 'sales.sale.view', 'sales.customer.view', 'sales.payment.receive', 'sales.receivable.view', 'sales.order.view',
             'purchasing.supplier.view', 'purchasing.order.view', 'reporting.dashboard.view',
@@ -83,6 +88,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'people.employee.view', 'people.payroll.manage',
         ],
         'branch_manager' => [
+            'people.leave.request', 'people.leave.approve', 'people.leave.manage', 'sales.giftcard.manage', 'sales.giftcard.promote',
             'integration.message.send', 'integration.import',
             'restaurant.order.manage', 'restaurant.kitchen.view', 'restaurant.setup.manage', 'bookings.manage', 'bookings.setup', 'rentals.manage',
             'catalog.product.view', 'catalog.product.manage', 'catalog.master.manage', 'catalog.pricing.manage',
@@ -96,22 +102,25 @@ final class RolesAndPermissionsSeeder extends Seeder
             'people.employee.view', 'people.attendance.manage',
         ],
         'inventory_controller' => [
+            'people.leave.request',
             'catalog.product.view', 'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage',
             'inventory.count.manage', 'production.view', 'production.order.manage', 'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.receipt.create',
         ],
         'procurement_manager' => [
+            'people.leave.request',
             'catalog.product.view', 'inventory.stock.view', 'purchasing.supplier.view', 'purchasing.supplier.manage',
             'purchasing.order.view', 'purchasing.order.create', 'purchasing.order.approve', 'purchasing.receipt.create',
             'purchasing.bill.manage', 'purchasing.return.create', 'purchasing.payable.view', 'finance.account.view',
         ],
         'cashier' => [
+            'people.leave.request', 'sales.giftcard.manage',
             'catalog.product.view', 'sales.sale.create', 'sales.customer.view', 'records.view', 'records.manage',
             'restaurant.order.manage', 'bookings.manage',
         ],
         // Takes orders at tables and sends them to the kitchen; settling is the cashier's.
-        'waiter' => ['catalog.product.view', 'restaurant.order.manage'],
+        'waiter' => ['catalog.product.view', 'restaurant.order.manage', 'people.leave.request'],
         // Kitchen display only.
-        'kitchen' => ['restaurant.kitchen.view'],
+        'kitchen' => ['restaurant.kitchen.view', 'people.leave.request'],
         'auditor' => [
             'organization.company.view', 'identity.user.view', 'identity.audit.view', 'catalog.product.view',
             'inventory.stock.view', 'sales.sale.view', 'sales.customer.view', 'finance.account.view',

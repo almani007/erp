@@ -171,7 +171,18 @@ bonus, tax, other deductions, advance recovery) before approval; approval needs 
 (the owner excepted) and posts salaries expense against salaries payable, deductions payable and
 advances; payment posts salaries payable against cash or bank. Printable payslips. The rules are
 settings (`payroll.month_days` 30, `payroll.hours_per_day` 8, `payroll.overtime_rate` 1). Income
-tax is entered per employee, not computed from tax slabs; leave balances are not tracked yet.
+tax is entered per employee, not computed from tax slabs.
+
+**Leave** (Finance → Leave). Leave types with a yearly allowance (fixed days, or each employee's
+own annual leave days), carry-forward limits, half days, and paid or unpaid. New businesses start
+with annual, sick, casual and unpaid leave. Staff whose login is linked to their employee record
+request their own leave and see their balances; managers approve or reject, enter leave for
+others, see a register of every employee's balance, and keep a holiday calendar (all branches or
+one). Days are counted without holidays and weekly off days (`payroll.weekly_off_days`, e.g.
+`["sun"]`). A paid request cannot go over the balance (allowance for the year, pro-rated for new
+joiners, plus carry-forward, less leave taken or waiting). Approving writes the days into the
+attendance register — paid leave, or unpaid leave that payroll deducts like an absence — and
+cancelling takes them back out unless that month's payroll is already approved.
 
 ### Approvals, notifications and the online store
 
@@ -194,6 +205,30 @@ marked "online" for staff to confirm and invoice; customers are matched by phone
 branch manager is notified and the customer gets a WhatsApp / SMS confirmation when messaging is
 on. Requests are rate-limited and carry a hidden bot trap. Products can be hidden from the store
 and given an image URL.
+
+### Gift cards and vouchers
+
+Selling → Gift cards & vouchers. Cards are sold for cash or bank, or given free as promotions
+(managers only; booked as promotional expense), singly or in batches, with an optional expiry
+and customer, and printed on an A4 sheet with a QR code each. The unspent value sits in a
+liability account. At the till "Gift card / voucher" is a payment method: the card number is
+checked, its balance shown, and the amount it can cover filled in; a void puts the value back. A
+return can be refunded as a store-credit voucher instead of cash. Lost cards can be blocked.
+Cards past their expiry are closed every night (`sales:expire-gift-cards`, 00:40) and the value
+left is booked as income.
+
+### Foreign currencies
+
+Finance → Currencies & exchange. Add the currencies you deal in and enter rates by date (units of
+the base currency per unit). A supplier can be set to bill in a currency. A supplier bill can be
+entered in that currency: the amounts are converted at the bill's rate (given, or the latest rate
+on the bill date) and the bill keeps its foreign total and foreign balance. Paying in the currency
+settles the foreign balance; payables are relieved at each bill's own rate and the money leaves at
+the payment's rate, and the difference is posted as a realised exchange gain or loss. Paying a
+foreign bill in base currency reduces its foreign balance at the bill's rate. At month end the
+open foreign bills can be revalued at the closing rate (preview first); the unrealised gain or
+loss is posted on that date and reversed the next day. Customer invoices in foreign currency are
+not supported yet.
 
 ### Integrations
 
@@ -307,6 +342,9 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | Rentals | wired | Contracts, deposits, nightly rent invoicing, returns with deductions |
 | Fixed assets | wired | Asset register, categories, straight-line and reducing-balance depreciation runs with reversal, disposal with gain/loss |
 | Payables | wired | Supplier bills matched to goods receipts with variance tolerance, expense bills, debit notes, payments allocated to bills, aging, statements |
+| Leave | wired | Leave types and allowances, self-service requests, approval into attendance and payroll, balances with carry-forward, holiday calendar |
+| Gift cards | wired | Sold or promotional cards and vouchers, redemption at the till, store credit on returns, blocking, expiry with breakage |
+| Currencies | wired | Currencies and dated rates, foreign-currency supplier bills and payments, realised exchange gain/loss, month-end revaluation with automatic reversal |
 | Sales documents | wired | Quotations, sales orders, partial invoicing on credit terms, receipts allocated to invoices, aging, statements, A4 printing |
 | Order management (delivery notes, stock reservation), Delivery, Workflow, billing for SaaS plans, offline POS sync | not started | — |
 

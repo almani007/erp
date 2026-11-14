@@ -19,7 +19,7 @@ final class SalesReturn extends Model
 
     protected $fillable = [
         'company_id', 'branch_id', 'warehouse_id', 'sale_id', 'shift_id', 'return_no', 'reason', 'refund_method',
-        'net_total', 'tax_total', 'grand_total', 'cost_total', 'journal_entry_id', 'created_by', 'returned_at',
+        'net_total', 'tax_total', 'grand_total', 'cost_total', 'journal_entry_id', 'created_by', 'returned_at', 'voucher_code',
     ];
 
     protected function casts(): array

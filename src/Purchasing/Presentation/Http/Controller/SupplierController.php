@@ -76,22 +76,31 @@ final class SupplierController
             'allocations' => ['sometimes', 'array', 'max:200'],
             'allocations.*.supplier_bill_id' => ['required', 'uuid', 'distinct'],
             'allocations.*.amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
+            'currency' => ['nullable', 'string', 'size:3'],      // pay in a foreign currency: amount and allocations are in it
+            'fx_rate' => ['nullable', 'numeric', 'gt:0', 'decimal:0,8'],
         ]);
+        $currency = isset($data['currency']) ? strtoupper($data['currency']) : null;
+        $fxRate = isset($data['fx_rate']) ? (string) $data['fx_rate'] : null;
 
         $allocations = isset($data['allocations'])
             ? collect($data['allocations'])->mapWithKeys(fn (array $a): array => [$a['supplier_bill_id'] => (string) $a['amount']])->all()
             : null;
 
         $supplier = Supplier::query()->findOrFail($supplierId);
-        $pending = app(\Workflow\Application\Approvals::class)->gate('supplier_payment', (string) $data['amount'],
-            "Pay {$supplier->name} ".number_format((float) $data['amount'], 2)." by {$data['method']}",
+        // Approval limits are in base currency.
+        $rates = app(\Finance\Application\ExchangeRates::class);
+        $baseAmount = $currency !== null && $rates->isForeign($data['company_id'], $currency)
+            ? \Finance\Application\ExchangeRates::toBase((string) $data['amount'], $fxRate ?? $rates->rate($data['company_id'], $currency, now()->toDateString()))
+            : (string) $data['amount'];
+        $pending = app(\Workflow\Application\Approvals::class)->gate('supplier_payment', $baseAmount,
+            "Pay {$supplier->name} ".($currency ? "{$currency} " : '').number_format((float) $data['amount'], 2)." by {$data['method']}",
             ['supplier_id' => $supplierId, 'company_id' => $data['company_id'], 'method' => $data['method'], 'amount' => (string) $data['amount'],
-                'reference' => $data['reference'] ?? null, 'allocations' => $allocations]);
+                'reference' => $data['reference'] ?? null, 'allocations' => $allocations, 'currency' => $currency, 'fx_rate' => $fxRate]);
         if ($pending !== null) {
             return new JsonResponse(['data' => ['status' => 'pending_approval', 'approval_request' => $pending]], 202);
         }
 
-        $payment = $action->execute($supplierId, $data['company_id'], $data['method'], (string) $data['amount'], $data['reference'] ?? null, $request->user()->id, $allocations);
+        $payment = $action->execute($supplierId, $data['company_id'], $data['method'], (string) $data['amount'], $data['reference'] ?? null, $request->user()->id, $allocations, null, $currency, $fxRate);
 
         return new JsonResponse(['data' => $payment], 201);
     }
@@ -106,6 +115,7 @@ final class SupplierController
             'tax_no' => ['nullable', 'string', 'max:80'],
             'address' => ['nullable', 'string', 'max:300'],
             'payment_terms_days' => ['sometimes', 'integer', 'min:0', 'max:365'],
+            'currency' => ['nullable', 'string', 'size:3', \Shared\Infrastructure\Validation\TenantRule::exists('currencies', 'code')],
             ...Supplier::customFieldRules(),
         ];
     }

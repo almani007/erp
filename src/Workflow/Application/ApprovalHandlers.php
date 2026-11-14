@@ -33,7 +33,7 @@ final class ApprovalHandlers
             return match ($type) {
                 'supplier_payment' => (function () use ($p, $requesterId): array {
                     $payment = app(PaySupplier::class)->execute($p['supplier_id'], $p['company_id'], $p['method'], (string) $p['amount'],
-                        $p['reference'] ?? null, $requesterId, $p['allocations'] ?? null);
+                        $p['reference'] ?? null, $requesterId, $p['allocations'] ?? null, null, $p['currency'] ?? null, $p['fx_rate'] ?? null);
 
                     return ['type' => 'supplier_payment', 'id' => $payment->id, 'label' => "Payment {$payment->payment_no}"];
                 })(),

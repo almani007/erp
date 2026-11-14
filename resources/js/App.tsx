@@ -43,6 +43,9 @@ import BookingsPage from './pages/BookingsPage';
 import RentalsPage from './pages/RentalsPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import ApprovalsPage from './pages/ApprovalsPage';
+import LeavePage from './pages/LeavePage';
+import GiftCardsPage from './pages/GiftCardsPage';
+import CurrenciesPage from './pages/CurrenciesPage';
 import StorePage from './pages/StorePage';
 import SaasTenantsPage from './pages/saas/SaasTenantsPage';
 import SaasTemplatesPage from './pages/saas/SaasTemplatesPage';
@@ -88,6 +91,9 @@ export default function App() {
                 <Route path="/rentals" element={<RentalsPage />} />
                 <Route path="/integrations" element={<IntegrationsPage />} />
                 <Route path="/approvals" element={<ApprovalsPage />} />
+                <Route path="/leave" element={<LeavePage />} />
+                <Route path="/gift-cards" element={<GiftCardsPage />} />
+                <Route path="/currencies" element={<CurrenciesPage />} />
                 <Route path="/records/:typeKey" element={<RecordsPage />} />
                 <Route path="/products" element={<ProductsPage />} />
                 <Route path="/master-data" element={<MasterDataPage />} />

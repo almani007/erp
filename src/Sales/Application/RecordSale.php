@@ -214,6 +214,9 @@ final class RecordSale
 
         foreach ($tenderRows as $row) {
             SaleTender::query()->create(['sale_id' => $sale->id] + $row);
+            if ($row['method'] === PaymentMethod::GiftCard->value) {
+                app(GiftCards::class)->redeem((string) $row['external_reference'], $row['amount'], $company->id, $sale->id);
+            }
         }
 
         $journal = $this->postJournal->execute(new JournalDraft(
@@ -345,6 +348,9 @@ final class RecordSale
             }
             if ($method === PaymentMethod::Loyalty) {
                 $byPoints = Decimal::add($byPoints, $amount);
+            }
+            if ($method === PaymentMethod::GiftCard && trim((string) ($tender['reference'] ?? '')) === '') {
+                throw new \DomainException('Enter the gift card number.');
             }
         }
 

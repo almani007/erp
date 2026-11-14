@@ -11,15 +11,15 @@ import TabPanel, { Item } from 'devextreme-react/tab-panel';
 import TextBox from 'devextreme-react/text-box';
 import Page, { Field } from '../components/Page';
 import { statusCell } from '../components/Status';
-import { api, getList, idempotent, newIdempotencyKey, notifyError, notifySuccess } from '../lib/api';
+import { api, getList, getOne, idempotent, newIdempotencyKey, notifyError, notifySuccess } from '../lib/api';
 import { useAppConfig } from '../lib/config';
 import { money, numberColumn, startOfMonth, toDateString, today } from '../lib/format';
 import { printDocument } from '../lib/print';
 import { can } from '../lib/store';
 
-interface Supplier { id: string; supplier_code: string; name: string; payment_terms_days?: number }
+interface Supplier { id: string; supplier_code: string; name: string; payment_terms_days?: number; currency?: string | null }
 interface Receipt { id: string; grn_no: string; received_at: string; grand_total: string; returned_total: string; supplier_invoice_no?: string | null; pick?: boolean }
-interface Bill { id: string; bill_no: string; supplier_invoice_no: string; bill_date: string; due_date: string; supplier?: Supplier; received_value: string; variance: string; expense_total: string; expense_tax: string; grand_total: string; balance_due: string; status: string }
+interface Bill { id: string; bill_no: string; supplier_invoice_no: string; bill_date: string; due_date: string; supplier?: Supplier; received_value: string; variance: string; expense_total: string; expense_tax: string; grand_total: string; balance_due: string; status: string; currency?: string | null; fx_rate?: string | null; foreign_total?: string | null; foreign_balance_due?: string | null }
 interface Expense { account_id: string; description: string; amount: number; tax_amount?: number }
 interface AgingRow { supplier_id: string; supplier_code: string; name: string; phone: string | null; balance: string; current: string; d1_30: string; d31_60: string; d61_90: string; d90_plus: string; not_billed: string; other: string }
 
@@ -33,6 +33,23 @@ export default function PayablesPage() {
                 {can('purchasing.return.create') && <Item title="Debit notes (returns)"><Returns /></Item>}
             </TabPanel>
         </Page>
+    );
+}
+
+/** Foreign currencies with today's rate, for bills and payments in another currency. */
+const useCurrencies = () => useQuery({ queryKey: ['currencies'], queryFn: () => getOne<any>('/currencies'), staleTime: 60000 }).data;
+
+function CurrencyPicker({ value, rate, onChange }: { value: string | null; rate: number | null; onChange: (currency: string | null, rate: number | null) => void }) {
+    const fx = useCurrencies();
+    const list = [{ code: null, label: `${fx?.base_currency ?? 'Base'} (base)` }, ...(fx?.currencies ?? []).filter((c: any) => c.status === 'active').map((c: any) => ({ code: c.code, label: c.code, rate: c.rate_today }))];
+    return (
+        <>
+            <Field label="Currency">
+                <SelectBox dataSource={list} valueExpr="code" displayExpr="label" value={value}
+                    onValueChanged={(e) => onChange(e.value, e.value ? Number(list.find((c: any) => c.code === e.value)?.rate ?? 0) || null : null)} />
+            </Field>
+            {value && <Field label={`Rate (${fx?.base_currency} per ${value})`}><NumberBox min={0} format="#,##0.0000" value={rate} onValueChanged={(e) => onChange(value, e.value)} /></Field>}
+        </>
     );
 }
 
@@ -63,6 +80,7 @@ function Bills() {
                 <Column {...numberColumn('expense_total')} caption="Expenses" />
                 <Column {...numberColumn('grand_total')} caption="Total" />
                 <Column {...numberColumn('balance_due')} caption="Open" cssClass="erp-strong" />
+                <Column caption="Foreign" width={150} calculateCellValue={(b: Bill) => (b.currency ? `${b.currency} ${money(b.foreign_balance_due)} @ ${Number(b.fx_rate)}` : '')} />
                 <Column dataField="status" width={100} cellRender={statusCell} />
                 <Summary><TotalItem column="balance_due" summaryType="sum" valueFormat="#,##0.00" displayFormat="{0}" /></Summary>
             </DataGrid>
@@ -84,6 +102,19 @@ function BillDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
     const [notes, setNotes] = useState('');
     const [busy, setBusy] = useState(false);
     const [key] = useState(newIdempotencyKey);
+    const [currency, setCurrency] = useState<string | null>(null);
+    const [rate, setRate] = useState<number | null>(null);
+    const fx = useCurrencies();
+
+    // A supplier who usually bills in a foreign currency starts in it.
+    useEffect(() => {
+        const s = suppliers.find((x) => x.id === supplierId);
+        if (s?.currency && s.currency !== fx?.base_currency) {
+            setCurrency(s.currency);
+            setRate(Number(fx?.currencies?.find((c: any) => c.code === s.currency)?.rate_today ?? 0) || null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [supplierId]);
 
     useEffect(() => {
         if (!supplierId) return;
@@ -92,10 +123,13 @@ function BillDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
 
     const picked = receipts.filter((r) => r.pick);
     const received = picked.reduce((s, r) => s + Number(r.grand_total) - Number(r.returned_total), 0);
-    const theirGoods = goodsAmount ?? received;
-    const variance = picked.length ? theirGoods - received : 0;
+    // Foreign bill: everything typed is in the supplier's currency; our goods value is shown converted.
+    const factor = currency && rate ? rate : 1;
+    const receivedShown = Math.round((received / factor) * 100) / 100;
+    const theirGoods = goodsAmount ?? receivedShown;
+    const variance = picked.length ? (theirGoods * factor) - received : 0;
     const expenseTotal = expenses.reduce((s, e) => s + Number(e.amount || 0) + Number(e.tax_amount || 0), 0);
-    const total = received + variance + expenseTotal;
+    const total = (picked.length ? theirGoods : 0) + expenseTotal;
 
     const save = async () => {
         setBusy(true);
@@ -103,7 +137,7 @@ function BillDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
             await api.post('/supplier-bills', {
                 supplier_id: supplierId, supplier_invoice_no: invoiceNo, bill_date: billDate, due_date: dueDate,
                 goods_receipt_ids: picked.map((r) => r.id), invoice_goods_amount: picked.length ? theirGoods : null,
-                expenses, notes: notes || null,
+                expenses, notes: notes || null, currency, fx_rate: currency ? rate : null,
             }, idempotent(key));
             notifySuccess('Supplier invoice recorded.');
             onDone();
@@ -124,6 +158,12 @@ function BillDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
                 <Field label="Invoice date"><DateBox type="date" value={billDate} max={new Date()} onValueChanged={(e) => e.value && setBillDate(toDateString(new Date(e.value)))} /></Field>
                 <Field label="Due (empty = supplier terms)"><DateBox type="date" value={dueDate} showClearButton onValueChanged={(e) => setDueDate(e.value ? toDateString(new Date(e.value)) : null)} /></Field>
             </div>
+            {(fx?.currencies?.length ?? 0) > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', gap: 12 }}>
+                    <CurrencyPicker value={currency} rate={rate} onChange={(c, r) => { setCurrency(c); setRate(r); setGoodsAmount(null); }} />
+                    {currency && <div className="erp-muted" style={{ alignSelf: 'end', paddingBottom: 8 }}>Amounts below are in {currency}. Paying later at a different rate books an exchange gain or loss.</div>}
+                </div>
+            )}
 
             <div className="erp-muted" style={{ margin: '10px 0 4px' }}>Goods receipts this invoice covers</div>
             <DataGrid dataSource={receipts} keyExpr="id" showBorders height={170} noDataText={supplierId ? 'No receipts waiting for an invoice.' : 'Choose a supplier.'}>
@@ -137,10 +177,10 @@ function BillDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
             </DataGrid>
             {picked.length > 0 && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 8, alignItems: 'end' }}>
-                    <Field label="Goods received (our value)"><TextBox readOnly value={money(received)} /></Field>
-                    <Field label="Goods on their invoice"><NumberBox format="#,##0.00" min={0} value={theirGoods} onValueChanged={(e) => setGoodsAmount(e.value)} /></Field>
+                    <Field label={`Goods received (our value${currency ? `, in ${currency}` : ''})`}><TextBox readOnly value={money(receivedShown)} /></Field>
+                    <Field label={`Goods on their invoice${currency ? ` (${currency})` : ''}`}><NumberBox format="#,##0.00" min={0} value={theirGoods} onValueChanged={(e) => setGoodsAmount(e.value)} /></Field>
                     <div style={{ paddingBottom: 8, color: Math.abs(variance) > 0.004 ? 'var(--erp-danger, #b91c1c)' : undefined }}>
-                        {Math.abs(variance) > 0.004 ? <>Difference <b>{money(variance)}</b> — posted to price variance</> : 'Matches the goods received'}
+                        {Math.abs(variance) > 0.004 ? <>Difference <b>{money(variance)}</b>{currency ? ` ${fx?.base_currency}` : ''} — posted to price variance</> : 'Matches the goods received'}
                     </div>
                 </div>
             )}
@@ -160,10 +200,10 @@ function BillDialog({ onClose, onDone }: { onClose: () => void; onDone: () => vo
             <Field label="Notes"><TextBox value={notes} onValueChanged={(e) => setNotes(e.value)} /></Field>
 
             <div className="erp-actions">
-                <span>Invoice total <b>{money(total)}</b></span>
+                <span>Invoice total <b>{currency ? `${currency} ` : ''}{money(total)}</b>{currency && rate ? <> = {fx?.base_currency} {money(total * rate)}</> : null}</span>
                 <div style={{ flex: 1 }} />
                 <Button text="Cancel" onClick={onClose} />
-                <Button text={busy ? 'Saving…' : 'Record invoice'} type="default" disabled={busy || !supplierId || !invoiceNo || (picked.length === 0 && expenses.length === 0)} onClick={save} />
+                <Button text={busy ? 'Saving…' : 'Record invoice'} type="default" disabled={busy || !supplierId || !invoiceNo || (picked.length === 0 && expenses.length === 0) || (!!currency && !rate)} onClick={save} />
             </div>
         </Popup>
     );
@@ -338,9 +378,24 @@ function PayDialog({ row, companyId, onClose, onDone }: { row: AgingRow; company
     const [manual, setManual] = useState(false);
     const [busy, setBusy] = useState(false);
     const [key] = useState(newIdempotencyKey);
-    useEffect(() => { getList<Bill>(`/suppliers/${row.supplier_id}/open-bills`).then((b) => setBills(b.map((x) => ({ ...x, pay: 0 })))).catch(notifyError); }, [row.supplier_id]);
+    const [allBills, setAllBills] = useState<(Bill & { pay?: number })[]>([]);
+    const [currency, setCurrency] = useState<string | null>(null);
+    const [rate, setRate] = useState<number | null>(null);
+    const fx = useCurrencies();
+    useEffect(() => { getList<Bill>(`/suppliers/${row.supplier_id}/open-bills`).then((b) => setAllBills(b.map((x) => ({ ...x, pay: 0 })))).catch(notifyError); }, [row.supplier_id]);
 
-    const auto = (total: number) => { let left = total; return bills.map((b) => { const pay = Math.min(Number(b.balance_due), Math.max(left, 0)); left -= pay; return { ...b, pay: Math.round(pay * 100) / 100 }; }); };
+    // Paying in a foreign currency settles that currency's bills, by their foreign balance.
+    const foreignCurrencies = [...new Set(allBills.map((b) => b.currency).filter(Boolean))] as string[];
+    const openOf = (b: Bill) => Number(currency ? b.foreign_balance_due : b.balance_due);
+    useEffect(() => {
+        const list = allBills.filter((b) => (currency ? b.currency === currency : true)).map((b) => ({ ...b, pay: 0 }));
+        setBills(list);
+        setAmount(Math.round(list.reduce((s, b) => s + openOf(b), 0) * 100) / 100);
+        setManual(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [allBills, currency]);
+
+    const auto = (total: number) => { let left = total; return bills.map((b) => { const pay = Math.min(openOf(b), Math.max(left, 0)); left -= pay; return { ...b, pay: Math.round(pay * 100) / 100 }; }); };
     const shown = manual ? bills : auto(amount);
     const allocated = shown.reduce((s, b) => s + Number(b.pay || 0), 0);
 
@@ -348,10 +403,10 @@ function PayDialog({ row, companyId, onClose, onDone }: { row: AgingRow; company
         setBusy(true);
         try {
             await api.post(`/suppliers/${row.supplier_id}/payments`, {
-                company_id: companyId, method, amount, reference: reference || null,
+                company_id: companyId, method, amount, reference: reference || null, currency, fx_rate: currency ? rate : null,
                 ...(manual ? { allocations: bills.filter((b) => Number(b.pay) > 0).map((b) => ({ supplier_bill_id: b.id, amount: b.pay })) } : {}),
             }, idempotent(key));
-            notifySuccess(`Payment of ${money(amount)} recorded.`);
+            notifySuccess(`Payment of ${currency ?? ''} ${money(amount)} recorded.`);
             onDone();
         } catch (e) {
             notifyError(e);
@@ -363,10 +418,20 @@ function PayDialog({ row, companyId, onClose, onDone }: { row: AgingRow; company
     return (
         <Popup visible title={`Pay ${row.name}`} width={820} height="auto" maxHeight="90vh" onHiding={onClose} showCloseButton>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.4fr', gap: 12 }}>
-                <Field label={`Amount (we owe ${money(row.balance)})`}><NumberBox min={0} max={Number(row.balance)} format="#,##0.00" value={amount} onValueChanged={(e) => setAmount(e.value ?? 0)} /></Field>
+                <Field label={currency ? `Amount in ${currency}` : `Amount (we owe ${money(row.balance)})`}><NumberBox min={0} max={currency ? undefined : Number(row.balance)} format="#,##0.00" value={amount} onValueChanged={(e) => setAmount(e.value ?? 0)} /></Field>
                 <Field label="Paid from"><SelectBox dataSource={[{ id: 'bank', name: 'Bank / cheque' }, { id: 'cash', name: 'Cash' }]} valueExpr="id" displayExpr="name" value={method} onValueChanged={(e) => setMethod(e.value)} /></Field>
                 <Field label="Cheque / transfer no."><TextBox value={reference} onValueChanged={(e) => setReference(e.value)} /></Field>
             </div>
+            {foreignCurrencies.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.4fr', gap: 12 }}>
+                    <Field label="Pay in">
+                        <SelectBox dataSource={[{ code: null, label: `${fx?.base_currency ?? 'Base'} (base)` }, ...foreignCurrencies.map((c) => ({ code: c, label: c }))]} valueExpr="code" displayExpr="label" value={currency}
+                            onValueChanged={(e) => { setCurrency(e.value); setRate(e.value ? Number(fx?.currencies?.find((c: any) => c.code === e.value)?.rate_today ?? 0) || null : null); }} />
+                    </Field>
+                    {currency && <Field label={`Today's rate (${fx?.base_currency} per ${currency})`}><NumberBox min={0} format="#,##0.0000" value={rate} onValueChanged={(e) => setRate(e.value)} /></Field>}
+                    {currency && rate ? <div className="erp-muted" style={{ alignSelf: 'end', paddingBottom: 8 }}>Leaves the bank as {fx?.base_currency} {money(amount * rate)}. The difference from the bills' own rates is booked as exchange gain or loss.</div> : null}
+                </div>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', margin: '10px 0 6px' }}>
                 <span className="erp-muted">{manual ? 'Choose the bills this pays' : 'Applied to the bills due first'}</span>
                 <div style={{ flex: 1 }} />
@@ -377,14 +442,14 @@ function PayDialog({ row, companyId, onClose, onDone }: { row: AgingRow; company
                 <Column dataField="bill_no" allowEditing={false} />
                 <Column dataField="supplier_invoice_no" caption="Their invoice" allowEditing={false} />
                 <Column dataField="due_date" dataType="date" allowEditing={false} width={110} />
-                <Column {...numberColumn('balance_due')} caption="Open" allowEditing={false} />
+                {currency ? <Column {...numberColumn('foreign_balance_due')} caption={`Open (${currency})`} allowEditing={false} /> : <Column {...numberColumn('balance_due')} caption="Open" allowEditing={false} />}
                 <Column dataField="pay" caption="Pay" dataType="number" format="#,##0.00" width={120} />
             </DataGrid>
             <div className="erp-actions">
                 <span>Applied to bills <b>{money(allocated)}</b></span>
                 <div style={{ flex: 1 }} />
                 <Button text="Cancel" onClick={onClose} />
-                <Button text={busy ? 'Saving…' : 'Record payment'} type="default" disabled={busy || amount <= 0 || (manual && allocated - amount > 0.004)} onClick={save} />
+                <Button text={busy ? 'Saving…' : 'Record payment'} type="default" disabled={busy || amount <= 0 || (manual && allocated - amount > 0.004) || (!!currency && !rate)} onClick={save} />
             </div>
         </Popup>
     );

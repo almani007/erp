@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Sales\Presentation\Http\Controller\CustomerController;
+use Sales\Presentation\Http\Controller\GiftCardController;
 use Sales\Presentation\Http\Controller\ReceivablesController;
 use Sales\Presentation\Http\Controller\SalesOrderController;
 use Sales\Presentation\Http\Controller\SaleController;
@@ -57,6 +58,13 @@ Route::middleware(['auth:sanctum', 'module:sales'])->group(function (): void {
     Route::get('receivables/aging', [ReceivablesController::class, 'aging'])->middleware($ar);
     Route::get('customers/{customerId}/open-invoices', [ReceivablesController::class, 'openInvoices'])->middleware('permission:sales.receivable.view|sales.payment.receive');
     Route::get('customers/{customerId}/statement', [ReceivablesController::class, 'statement'])->middleware($ar);
+
+    // Gift cards and vouchers.
+    Route::get('gift-cards', [GiftCardController::class, 'index'])->middleware('permission:sales.giftcard.manage');
+    Route::get('gift-cards/lookup/{code}', [GiftCardController::class, 'lookup'])->middleware('permission:sales.sale.create|sales.giftcard.manage');
+    Route::get('gift-cards/{id}', [GiftCardController::class, 'show'])->middleware('permission:sales.giftcard.manage');
+    Route::post('gift-cards', [GiftCardController::class, 'store'])->middleware(['permission:sales.giftcard.manage', 'idempotent']);
+    Route::post('gift-cards/{id}/block', [GiftCardController::class, 'block'])->middleware('permission:sales.giftcard.manage');
 });
 
 // Outside the module gate: every signed-in user needs it to build the menu,
