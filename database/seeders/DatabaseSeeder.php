@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+
+final class DatabaseSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $this->call(RolesAndPermissionsSeeder::class);
+
+        // The demo tenant ships with published default passwords, so it is
+        // never created in production.
+        if (! app()->environment('production')) {
+            $this->call(DemoTenantSeeder::class);
+        }
+    }
+}

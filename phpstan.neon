@@ -1,0 +1,11 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+        - src/
+    level: 6
+    ignoreErrors: []
+    excludePaths: []
+    checkMissingIterableValueType: false

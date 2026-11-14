@@ -1,0 +1,101 @@
+{
+    "name": "brixel/erp",
+    "type": "project",
+    "description": "Brixel Enterprise ERP - Multi-tenant, multi-company, multi-branch platform (Laravel 13 / PHP 8.5)",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.5",
+        "ext-bcmath": "*",
+        "ext-intl": "*",
+        "ext-pdo": "*",
+        "laravel/framework": "^13.0",
+        "laravel/reverb": "^1.12",
+        "laravel/sanctum": "^4.3",
+        "laravel/tinker": "^3.0",
+        "predis/predis": "^2.2",
+        "spatie/laravel-permission": "^8.0",
+        "symfony/uid": "^7.2"
+    },
+    "require-dev": {
+        "deptrac/deptrac": "^3.0",
+        "fakerphp/faker": "^1.23",
+        "larastan/larastan": "^3.0",
+        "laravel/pail": "^1.2",
+        "laravel/pint": "^1.18",
+        "laravel/sail": "^1.41",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.6|^9.0",
+        "phpunit/phpunit": "^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Shared\\": "src/Shared/",
+            "Organization\\": "src/Organization/",
+            "Identity\\": "src/Identity/",
+            "Catalog\\": "src/Catalog/",
+            "Inventory\\": "src/Inventory/",
+            "Sales\\": "src/Sales/",
+            "Purchasing\\": "src/Purchasing/",
+            "Finance\\": "src/Finance/",
+            "Production\\": "src/Production/",
+            "People\\": "src/People/",
+            "CRM\\": "src/CRM/",
+            "Workflow\\": "src/Workflow/",
+            "Reporting\\": "src/Reporting/",
+            "Integration\\": "src/Integration/",
+            "Platform\\": "src/Platform/",
+            "OrderManagement\\": "src/OrderManagement/",
+            "Delivery\\": "src/Delivery/",
+            "Payroll\\": "src/Payroll/",
+            "Saas\\": "src/Saas/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ],
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ],
+        "post-create-project-cmd": [
+            "@php artisan key:generate --ansi"
+        ],
+        "lint": "pint --test",
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "layers": "deptrac analyse --config-file=deptrac.yaml",
+        "test": "phpunit",
+        "check": [
+            "@lint",
+            "@analyse",
+            "@layers",
+            "@test"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "platform": {
+            "php": "8.5.0"
+        },
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

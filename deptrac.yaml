@@ -1,0 +1,68 @@
+deptrac:
+  paths:
+    - ./src
+
+  layers:
+    - name: SharedDomain
+      collectors:
+        - type: directory
+          value: src/Shared/Domain/.*
+
+    - name: SharedInfrastructure
+      collectors:
+        - type: directory
+          value: src/Shared/Infrastructure/.*
+
+    - name: Domain
+      collectors:
+        - type: directory
+          value: src/(?!Shared)[A-Za-z]+/Domain/.*
+
+    - name: Application
+      collectors:
+        - type: directory
+          value: src/(?!Shared)[A-Za-z]+/Application/.*
+
+    - name: Infrastructure
+      collectors:
+        - type: directory
+          value: src/(?!Shared)[A-Za-z]+/Infrastructure/.*
+
+    - name: Presentation
+      collectors:
+        - type: directory
+          value: src/(?!Shared)[A-Za-z]+/Presentation/.*
+
+    - name: Laravel
+      collectors:
+        - type: classLike
+          value: ^Illuminate\\.*
+        - type: classLike
+          value: ^Spatie\\.*
+
+  ruleset:
+    SharedDomain: ~
+
+    Domain:
+      - SharedDomain
+
+    Application:
+      - Domain
+      - SharedDomain
+
+    Infrastructure:
+      - Application
+      - Domain
+      - SharedDomain
+      - SharedInfrastructure
+      - Laravel
+
+    Presentation:
+      - Application
+      - Domain
+      - SharedDomain
+      - Laravel
+
+    SharedInfrastructure:
+      - SharedDomain
+      - Laravel

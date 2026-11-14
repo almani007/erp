@@ -1,0 +1,209 @@
+# =========================================================
+# Brixel ERP Multi-Tenant SaaS Development Stack
+#
+# app       -> PHP 8.5 FPM + Laravel 13
+# nginx     -> Nginx (Wildcard tenant subdomains)
+# postgres  -> PostgreSQL 18 (shared schema, tenant_id row isolation)
+# redis     -> Redis 8
+# reverb    -> Laravel Reverb WebSocket server
+# node      -> Node 22 (React + DevExpress frontend dev)
+#
+# Start:
+#   docker compose up -d --build
+#
+# Stop:
+#   docker compose down
+# =========================================================
+
+services:
+
+  # =========================================================
+  # Laravel Application (PHP 8.5 FPM)
+  # =========================================================
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+
+    image: erp_app
+    pull_policy: never
+    container_name: brixel_erp_app
+
+    restart: unless-stopped
+
+    working_dir: /var/www/erp
+
+    volumes:
+      - .:/var/www/erp
+
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: ${APP_URL:-http://localhost:8090}
+
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: erp_app
+      DB_USERNAME: erp_app
+      DB_PASSWORD: erp_app_password
+
+      # Redis
+      CACHE_STORE: redis
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+
+      # Filesystem
+      FILESYSTEM_DISK: ${FILESYSTEM_DISK:-local}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+    networks:
+      - erp_network
+
+  queue:
+    extends:
+      service: app
+    container_name: brixel_erp_queue
+    command: php artisan queue:work database --sleep=1 --tries=5 --timeout=90
+
+  scheduler:
+    extends:
+      service: app
+    container_name: brixel_erp_scheduler
+    command: php artisan schedule:work
+
+  # =========================================================
+  # Nginx (Internal FastCGI Proxy & WebSockets)
+  # =========================================================
+  nginx:
+    image: nginx:alpine
+    container_name: brixel_erp_nginx
+    restart: unless-stopped
+
+    ports:
+      - "${ERP_HTTP_PORT:-8090}:80"
+      - "${ERP_HTTPS_PORT:-8450}:443"
+
+    volumes:
+      - .:/var/www/erp
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/ssl:/etc/nginx/ssl
+
+    depends_on:
+      - app
+
+    networks:
+      - erp_network
+
+  # =========================================================
+  # PostgreSQL 18
+  # =========================================================
+  postgres:
+    image: postgres:18
+    container_name: brixel_erp_postgres
+    restart: unless-stopped
+
+    ports:
+      # Security Hardening: Bind strictly to 127.0.0.1 on non-default port
+      - "127.0.0.1:${ERP_DB_PORT:-35432}:5432"
+
+    environment:
+      POSTGRES_DB: erp_app
+      POSTGRES_USER: erp_app
+      POSTGRES_PASSWORD: erp_app_password
+
+    volumes:
+      - erp_postgres_data:/var/lib/postgresql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U erp_app -d erp_app"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+    networks:
+      - erp_network
+
+  # =========================================================
+  # Redis 8 (Cache & Sessions)
+  # =========================================================
+  redis:
+    image: redis:8-alpine
+    container_name: brixel_erp_redis
+    restart: unless-stopped
+
+    ports:
+      # Security Hardening: Bind strictly to 127.0.0.1 on non-default port
+      - "127.0.0.1:${ERP_REDIS_PORT:-36379}:6379"
+
+    volumes:
+      - erp_redis_data:/data
+
+    networks:
+      - erp_network
+
+  # =========================================================
+  # Laravel Reverb (WebSockets)
+  # =========================================================
+  reverb:
+    extends:
+      service: app
+    container_name: brixel_erp_reverb
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080 --no-interaction
+
+    ports:
+      # Security Hardening: Bind strictly to 127.0.0.1 on non-default port
+      - "127.0.0.1:${ERP_REVERB_PORT:-38080}:8080"
+
+  # =========================================================
+  # Node 22 (React + DevExpress Frontend Dev Server)
+  # =========================================================
+  node:
+    build:
+      context: .
+      dockerfile: docker/node/Dockerfile
+
+    image: erp_node
+    pull_policy: never
+    container_name: brixel_erp_node
+
+    restart: unless-stopped
+
+    working_dir: /var/www/erp
+
+    ports:
+      - "${ERP_VITE_PORT:-5173}:5173"
+
+    volumes:
+      - .:/var/www/erp
+
+    networks:
+      - erp_network
+
+# =========================================================
+# Volumes
+# =========================================================
+volumes:
+  erp_postgres_data:
+  erp_redis_data:
+
+# =========================================================
+# Network
+# =========================================================
+networks:
+  erp_network:
+    driver: bridge
