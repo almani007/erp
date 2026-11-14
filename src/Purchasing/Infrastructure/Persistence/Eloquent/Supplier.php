@@ -17,7 +17,7 @@ final class Supplier extends Model
 
     protected $table = 'suppliers';
 
-    protected $fillable = ['supplier_code', 'name', 'contact_person', 'phone', 'email', 'tax_no', 'payment_terms_days', 'status'];
+    protected $fillable = ['supplier_code', 'name', 'contact_person', 'phone', 'email', 'tax_no', 'payment_terms_days', 'status', 'address'];
 
     protected function casts(): array
     {

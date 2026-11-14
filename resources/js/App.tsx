@@ -32,6 +32,7 @@ import ProductionPage from './pages/ProductionPage';
 import PeoplePage from './pages/PeoplePage';
 import SalesDocumentsPage from './pages/SalesDocumentsPage';
 import ReceivablesPage from './pages/ReceivablesPage';
+import PayablesPage from './pages/PayablesPage';
 import SaasTenantsPage from './pages/saas/SaasTenantsPage';
 import SaasTemplatesPage from './pages/saas/SaasTemplatesPage';
 
@@ -60,6 +61,7 @@ export default function App() {
                 <Route path="/people" element={<PeoplePage />} />
                 <Route path="/sales-documents" element={<SalesDocumentsPage />} />
                 <Route path="/receivables" element={<ReceivablesPage />} />
+                <Route path="/payables" element={<PayablesPage />} />
                 <Route path="/records/:typeKey" element={<RecordsPage />} />
                 <Route path="/products" element={<ProductsPage />} />
                 <Route path="/master-data" element={<MasterDataPage />} />

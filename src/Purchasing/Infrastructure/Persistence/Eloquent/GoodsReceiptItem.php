@@ -15,7 +15,7 @@ final class GoodsReceiptItem extends Model
 
     protected $table = 'goods_receipt_items';
 
-    protected $fillable = ['goods_receipt_id', 'purchase_order_item_id', 'product_id', 'quantity', 'unit_cost', 'tax_amount', 'line_total', 'batch_no', 'expiry_date'];
+    protected $fillable = ['goods_receipt_id', 'purchase_order_item_id', 'product_id', 'quantity', 'unit_cost', 'tax_amount', 'line_total', 'batch_no', 'expiry_date', 'returned_quantity'];
 
     public $timestamps = false;
 }

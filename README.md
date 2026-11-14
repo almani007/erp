@@ -109,6 +109,21 @@ invoices you pick. Returns credited to the account reduce that invoice's balance
 Quotations, orders, invoices and statements print on A4 (or save as PDF) with the company name
 and NTN, customer details and the terms set under Quotations & orders → Print settings.
 
+### Supplier invoices, debit notes and payables
+
+Supply chain → Payables. A supplier's invoice is matched to the goods receipts it covers (the
+receipts already matched the purchase order — a three-way match). Goods were put on the
+supplier's account when received, so the bill only posts the difference between their invoice
+and what was received (to Purchase Price Variance, 5130), plus any other charges on it —
+freight, services, rent, utilities — to the expense accounts chosen, with input tax. A
+difference above `purchasing.variance_tolerance_percent` (default 2 %) needs the
+`purchasing.bill.override` permission. The same supplier invoice number cannot be entered twice.
+
+Debit notes send goods back from a receipt: stock leaves at average cost, the supplier is owed
+less at the receipt price (the gap to price variance), and an already-billed invoice's balance
+drops. Payments are applied to the bills due first, or to the bills chosen. Aging by due date
+(plus goods received but not yet billed) and supplier statements print like customer ones.
+
 ### HR and payroll
 
 Finance → HR & payroll. Employees (monthly salary or daily wage, named allowances and
@@ -169,11 +184,11 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | Production | wired | Recipes / bills of materials with wastage, production orders (plan, complete with actual usage and overheads, cancel), recipe items that consume ingredients on sale |
 | CRM | partial, **not wired** | Unreviewed scaffolding from an earlier pass; no routes, not registered in `bootstrap/providers.php` |
 | People (HR & payroll) | wired | Employees, attendance register, advances and loans, monthly payroll with maker-checker approval, journals, payslips |
+| Payables | wired | Supplier bills matched to goods receipts with variance tolerance, expense bills, debit notes, payments allocated to bills, aging, statements |
 | Sales documents | wired | Quotations, sales orders, partial invoicing on credit terms, receipts allocated to invoices, aging, statements, A4 printing |
 | Order management (delivery notes, stock reservation), Delivery, Workflow, billing for SaaS plans, offline POS sync | not started | — |
 
-Known gaps inside the wired modules: supplier-invoice matching (the liability is booked at
-receipt, at order prices), supplier advances and purchase returns, buy-X-get-Y and stacked
+Known gaps inside the wired modules: supplier advances (paying before goods arrive), buy-X-get-Y and stacked
 deals, partial transfer receipts, inter-company
 transfers, journals for cash paid-in/paid-out, per-tenant custom roles, MFA, webhook delivery,
 and server-side paging (lists are capped, typically at 500–1000 rows). Held POS sales are kept

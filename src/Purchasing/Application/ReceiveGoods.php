@@ -29,8 +29,8 @@ use Shared\Domain\Support\Decimal;
  *   Dr Inventory, Purchase tax receivable     Cr Accounts payable
  *
  * The supplier liability is recognised at receipt, at the order's prices.
- * There is no separate supplier-invoice matching step yet, so a price
- * difference on the supplier's invoice has to be adjusted by journal.
+ * The supplier's invoice is matched to receipts later (RecordSupplierBill),
+ * which posts any price difference.
  */
 final class ReceiveGoods
 {

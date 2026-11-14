@@ -24,6 +24,7 @@ export default function SuppliersPage() {
                 <Column dataField="contact_person" caption="Contact" />
                 <Column dataField="phone" width={150} />
                 <Column dataField="email" />
+                <Column dataField="address" visible={false} />
                 <Column dataField="tax_no" caption="Tax no." width={140} />
                 <Column dataField="payment_terms_days" caption="Terms (days)" dataType="number" width={130} />
                 <Column {...numberColumn('balance')} caption="We owe" allowEditing={false} />

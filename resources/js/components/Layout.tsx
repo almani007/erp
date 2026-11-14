@@ -49,6 +49,7 @@ const NAV: { section: string; links: NavLink[] }[] = [
     {
         section: 'Supply chain', links: [
             { text: 'Purchase orders', icon: 'orderedlist', path: '/purchase-orders', permission: 'purchasing.order.view', module: 'purchasing' },
+            { text: 'Payables', icon: 'money', path: '/payables', permission: 'purchasing.payable.view', module: 'purchasing' },
             { text: 'Reorder suggestions', icon: 'bell', path: '/reorder', permission: 'purchasing.order.view', module: 'purchasing' },
             { text: 'Suppliers', icon: 'user', path: '/suppliers', permission: 'purchasing.supplier.view', module: 'purchasing' },
             { text: 'Stock on hand', icon: 'box', path: '/stock', permission: 'inventory.stock.view', module: 'inventory' },

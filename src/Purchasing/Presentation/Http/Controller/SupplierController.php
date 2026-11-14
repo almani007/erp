@@ -73,9 +73,16 @@ final class SupplierController
             'method' => ['required', 'in:cash,bank'],
             'amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
             'reference' => ['nullable', 'string', 'max:120'],
+            'allocations' => ['sometimes', 'array', 'max:200'],
+            'allocations.*.supplier_bill_id' => ['required', 'uuid', 'distinct'],
+            'allocations.*.amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
         ]);
 
-        $payment = $action->execute($supplierId, $data['company_id'], $data['method'], (string) $data['amount'], $data['reference'] ?? null, $request->user()->id);
+        $allocations = isset($data['allocations'])
+            ? collect($data['allocations'])->mapWithKeys(fn (array $a): array => [$a['supplier_bill_id'] => (string) $a['amount']])->all()
+            : null;
+
+        $payment = $action->execute($supplierId, $data['company_id'], $data['method'], (string) $data['amount'], $data['reference'] ?? null, $request->user()->id, $allocations);
 
         return new JsonResponse(['data' => $payment], 201);
     }
@@ -88,6 +95,7 @@ final class SupplierController
             'phone' => ['nullable', 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:150'],
             'tax_no' => ['nullable', 'string', 'max:80'],
+            'address' => ['nullable', 'string', 'max:300'],
             'payment_terms_days' => ['sometimes', 'integer', 'min:0', 'max:365'],
             ...Supplier::customFieldRules(),
         ];

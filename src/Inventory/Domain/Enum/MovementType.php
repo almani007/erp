@@ -14,6 +14,7 @@ enum MovementType: string
     case TransferOut = 'transfer_out';
     case TransferIn = 'transfer_in';
     case PurchaseReceipt = 'purchase_receipt';
+    case PurchaseReturn = 'purchase_return';
     case ProductionIssue = 'production_issue';
     case ProductionReceipt = 'production_receipt';
     /** Ingredients taken out when a recipe item (a dish, a drink) is sold. */

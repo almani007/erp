@@ -51,6 +51,7 @@ final class ProvisionTenant
         ['5100', 'Inventory Adjustments', 'expense', 'inventory_adjustment'],
         ['5110', 'Cash Over / Short', 'expense', 'cash_over_short'],
         ['5120', 'Loyalty Redemptions', 'expense', 'loyalty_redemption'],
+        ['5130', 'Purchase Price Variance', 'expense', 'purchase_price_variance'],
         ['5200', 'Salaries & Wages', 'expense', 'salaries_expense'],
         ['5250', 'Production Costs Applied', 'expense', 'production_overhead'],
         ['5300', 'Rent', 'expense', null],

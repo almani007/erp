@@ -18,7 +18,7 @@ final class GoodsReceipt extends Model
 
     protected $fillable = [
         'company_id', 'branch_id', 'warehouse_id', 'supplier_id', 'purchase_order_id', 'grn_no', 'supplier_invoice_no',
-        'subtotal', 'tax_total', 'grand_total', 'journal_entry_id', 'received_by', 'received_at',
+        'subtotal', 'tax_total', 'grand_total', 'journal_entry_id', 'received_by', 'received_at', 'supplier_bill_id', 'returned_total',
     ];
 
     protected function casts(): array

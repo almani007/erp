@@ -33,6 +33,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         'sales.shift.manage', 'sales.customer.view', 'sales.customer.manage',
         'sales.return.create', 'sales.payment.receive',
         'sales.order.view', 'sales.order.manage', 'sales.invoice.create', 'sales.receivable.view',
+        'purchasing.bill.manage', 'purchasing.bill.override', 'purchasing.return.create', 'purchasing.payable.view',
 
         'purchasing.supplier.view', 'purchasing.supplier.manage', 'purchasing.order.view', 'purchasing.order.create',
         'purchasing.order.approve', 'purchasing.receipt.create', 'purchasing.payment.create',
@@ -58,6 +59,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'organization.company.view', 'finance.account.view', 'finance.account.manage', 'finance.journal.view',
             'finance.journal.create', 'finance.journal.reverse', 'finance.period.manage', 'finance.report.view', 'finance.voucher.create',
             'sales.sale.view', 'sales.customer.view', 'sales.payment.receive', 'sales.receivable.view', 'sales.order.view', 'inventory.stock.view', 'catalog.product.view',
+            'purchasing.payable.view', 'purchasing.bill.override', 'purchasing.payment.create',
             'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.order.approve', 'purchasing.payment.create',
             'identity.audit.view', 'reporting.dashboard.view', 'reporting.analytics.view',
             'people.employee.view', 'people.payroll.approve',
@@ -66,6 +68,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'organization.company.view', 'finance.account.view', 'finance.journal.view', 'finance.journal.create',
             'finance.voucher.create', 'finance.report.view', 'sales.sale.view', 'sales.customer.view', 'sales.payment.receive', 'sales.receivable.view', 'sales.order.view',
             'purchasing.supplier.view', 'purchasing.order.view', 'reporting.dashboard.view',
+            'purchasing.bill.manage', 'purchasing.payable.view',
             'people.employee.view', 'people.payroll.manage',
         ],
         'branch_manager' => [
@@ -86,6 +89,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         'procurement_manager' => [
             'catalog.product.view', 'inventory.stock.view', 'purchasing.supplier.view', 'purchasing.supplier.manage',
             'purchasing.order.view', 'purchasing.order.create', 'purchasing.order.approve', 'purchasing.receipt.create',
+            'purchasing.bill.manage', 'purchasing.return.create', 'purchasing.payable.view', 'finance.account.view',
         ],
         'cashier' => [
             'catalog.product.view', 'sales.sale.create', 'sales.customer.view', 'records.view', 'records.manage',
