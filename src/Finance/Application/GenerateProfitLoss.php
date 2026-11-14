@@ -20,6 +20,8 @@ final class GenerateProfitLoss
             ->join('chart_of_accounts as coa', 'jl.account_id', '=', 'coa.id')
             ->where('je.company_id', $companyId)
             ->whereIn('je.status', ['posted', 'reversed'])
+            // A closed year still shows its results: the closing entry only moves them to retained earnings.
+            ->where('je.source_type', '!=', 'year_end_close')
             ->whereBetween('je.posting_date', [$fromDate, $toDate]);
 
         if ($branchId) {

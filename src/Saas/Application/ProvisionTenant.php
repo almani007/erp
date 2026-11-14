@@ -44,7 +44,7 @@ final class ProvisionTenant
         ['2300', 'Salaries Payable', 'liability', 'salaries_payable'],
         ['2310', 'Payroll Deductions Payable', 'liability', 'payroll_deductions_payable'],
         ['3010', "Owner's Capital", 'equity', null],
-        ['3020', 'Retained Earnings', 'equity', null],
+        ['3020', 'Retained Earnings', 'equity', 'retained_earnings'],
         ['3900', 'Opening Balance Equity', 'equity', 'opening_balance_equity'],
         ['4010', 'Sales Revenue', 'revenue', 'sales_revenue'],
         ['4900', 'Other Income', 'revenue', null],

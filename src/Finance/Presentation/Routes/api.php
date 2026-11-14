@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Finance\Presentation\Http\Controller\AccountController;
+use Finance\Presentation\Http\Controller\AccountingToolsController;
 use Finance\Presentation\Http\Controller\FinancialReportController;
 use Finance\Presentation\Http\Controller\JournalController;
 use Finance\Presentation\Http\Controller\PeriodController;
@@ -31,5 +32,23 @@ Route::middleware(['auth:sanctum', 'module:finance'])->group(function (): void {
         Route::get('profit-loss', [FinancialReportController::class, 'profitLoss']);
         Route::get('balance-sheet', [FinancialReportController::class, 'balanceSheet']);
         Route::get('general-ledger', [FinancialReportController::class, 'generalLedger']);
+        Route::get('profit-loss-matrix', [AccountingToolsController::class, 'profitLossMatrix']);
+        Route::get('cash-flow', [AccountingToolsController::class, 'cashFlow']);
+        Route::get('sales-tax', [AccountingToolsController::class, 'salesTax']);
+        Route::get('budget-vs-actual/{budgetId}', [AccountingToolsController::class, 'budgetVsActual']);
     });
+
+    Route::get('budgets', [AccountingToolsController::class, 'budgets'])->middleware('permission:finance.report.view');
+    Route::get('budgets/{id}', [AccountingToolsController::class, 'budget'])->middleware('permission:finance.report.view');
+    Route::post('budgets', [AccountingToolsController::class, 'saveBudget'])->middleware('permission:finance.budget.manage');
+    Route::put('budgets/{id}', [AccountingToolsController::class, 'saveBudget'])->middleware('permission:finance.budget.manage');
+
+    Route::get('recurring-journals', [AccountingToolsController::class, 'recurring'])->middleware('permission:finance.journal.view');
+    Route::post('recurring-journals', [AccountingToolsController::class, 'saveRecurring'])->middleware('permission:finance.recurring.manage');
+    Route::put('recurring-journals/{id}', [AccountingToolsController::class, 'saveRecurring'])->middleware('permission:finance.recurring.manage');
+    Route::post('recurring-journals/run', [AccountingToolsController::class, 'runRecurring'])->middleware('permission:finance.recurring.manage');
+
+    Route::get('year-end-closings', [AccountingToolsController::class, 'closings'])->middleware('permission:finance.account.view');
+    Route::post('year-end-closings', [AccountingToolsController::class, 'closeYear'])->middleware('permission:finance.year.close');
+    Route::post('year-end-closings/{id}/reopen', [AccountingToolsController::class, 'reopenYear'])->middleware('permission:finance.year.close');
 });

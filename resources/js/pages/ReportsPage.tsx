@@ -7,6 +7,7 @@ import Page, { Field } from '../components/Page';
 import { errorMessage, getOne } from '../lib/api';
 import { money, numberColumn, startOfMonth, today } from '../lib/format';
 import { useCompanyId, useSession } from '../lib/store';
+import { BudgetVsActual, CashFlow, GeneralLedger, ProfitLossMatrix, SalesTaxReturn } from './ManagementReports';
 
 const sumFormat = { type: 'fixedPoint' as const, precision: 2 };
 
@@ -66,6 +67,11 @@ export default function ReportsPage() {
                         )}
                     </div>
                 </Item>
+                <Item title="General ledger"><GeneralLedger companyId={companyId} from={from} to={to} /></Item>
+                <Item title="P&L by month / branch"><ProfitLossMatrix companyId={companyId} from={from} to={to} /></Item>
+                <Item title="Cash flow"><CashFlow companyId={companyId} from={from} to={to} /></Item>
+                <Item title="Budget vs actual"><BudgetVsActual from={from} to={to} branchId={branchId} /></Item>
+                <Item title="Sales tax"><SalesTaxReturn companyId={companyId} from={from} to={to} /></Item>
             </TabPanel>
         </Page>
     );

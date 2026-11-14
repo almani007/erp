@@ -124,6 +124,21 @@ less at the receipt price (the gap to price variance), and an already-billed inv
 drops. Payments are applied to the bills due first, or to the bills chosen. Aging by due date
 (plus goods received but not yet billed) and supplier statements print like customer ones.
 
+### Accounting: reports, budgets, recurring journals, year-end
+
+Finance → Financial reports adds the general ledger for any account (opening and running
+balance), profit and loss by month or by branch side by side, a cash flow statement (direct
+method: each cash and bank movement classified by the other side of its journal into operating,
+investing and financing), budget against actual with favourable / unfavourable variances, and a
+sales tax summary (output tax on sales less returns, input tax on receipts and expense bills less
+debit notes, by rate) as a working paper for the return. Every grid exports to Excel.
+
+Finance → Accounting tools: budgets (12 monthly figures per income or expense account, company-wide
+or per branch); recurring journals (weekly, monthly, quarterly or yearly; posted automatically each
+night by `finance:recurring`, or on demand; a failure is shown on the template); and year-end close,
+which moves the year's income and expense into retained earnings in one journal and closes the
+year's periods — reversible with a reason. Closed years still show their results in profit and loss.
+
 ### Banking, cheques and reconciliation
 
 Finance → Banking & cheques. Bank accounts and cash boxes each get their own ledger account (the
@@ -206,6 +221,7 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | Production | wired | Recipes / bills of materials with wastage, production orders (plan, complete with actual usage and overheads, cancel), recipe items that consume ingredients on sale |
 | CRM | partial, **not wired** | Unreviewed scaffolding from an earlier pass; no routes, not registered in `bootstrap/providers.php` |
 | People (HR & payroll) | wired | Employees, attendance register, advances and loans, monthly payroll with maker-checker approval, journals, payslips |
+| Accounting tools | wired | General ledger, monthly / branch P&L, cash flow, budget vs actual, sales tax summary, budgets, recurring journals, year-end close |
 | Banking | wired | Bank and cash accounts, cheque register with post-dated cheques, transfers, bank reconciliation with CSV statement matching |
 | Fixed assets | wired | Asset register, categories, straight-line and reducing-balance depreciation runs with reversal, disposal with gain/loss |
 | Payables | wired | Supplier bills matched to goods receipts with variance tolerance, expense bills, debit notes, payments allocated to bills, aging, statements |

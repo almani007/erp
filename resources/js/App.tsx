@@ -35,6 +35,7 @@ import ReceivablesPage from './pages/ReceivablesPage';
 import PayablesPage from './pages/PayablesPage';
 import AssetsPage from './pages/AssetsPage';
 import BankingPage from './pages/BankingPage';
+import AccountingToolsPage from './pages/AccountingToolsPage';
 import SaasTenantsPage from './pages/saas/SaasTenantsPage';
 import SaasTemplatesPage from './pages/saas/SaasTemplatesPage';
 
@@ -66,6 +67,7 @@ export default function App() {
                 <Route path="/payables" element={<PayablesPage />} />
                 <Route path="/assets" element={<AssetsPage />} />
                 <Route path="/banking" element={<BankingPage />} />
+                <Route path="/accounting-tools" element={<AccountingToolsPage />} />
                 <Route path="/records/:typeKey" element={<RecordsPage />} />
                 <Route path="/products" element={<ProductsPage />} />
                 <Route path="/master-data" element={<MasterDataPage />} />
