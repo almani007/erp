@@ -21,6 +21,19 @@ Artisan::command('rentals:bill', function (Rentals\Application\ManageRentals $re
     $this->info("Raised {$result['invoiced']} rent invoices; {$result['failed']} failed (see the contract).");
 })->purpose('Invoice rent that has fallen due');
 Schedule::command('rentals:bill')->dailyAt('01:20')->withoutOverlapping();
+
+// FBR reporting, webhooks and receipts-by-message, from the transactional outbox.
+Artisan::command('integration:relay', function (Integration\Application\IntegrationRelay $relay): void {
+    $r = $relay->run();
+    $this->info("Events {$r['events']}, FBR {$r['fiscal']}, webhooks {$r['webhooks']}.");
+})->purpose('Publish outbox events: FBR, webhooks, messages');
+Schedule::command('integration:relay')->everyMinute()->withoutOverlapping();
+
+// Overdue invoice and appointment reminders.
+Artisan::command('integration:reminders', function (Integration\Application\AutoMessages $messages): void {
+    $this->info('Sent '.$messages->daily().' reminders.');
+})->purpose('Send overdue-invoice and appointment reminders');
+Schedule::command('integration:reminders')->dailyAt('18:05')->withoutOverlapping();
 Schedule::call(static fn () => DB::table('idempotency_records')->where('expires_at', '<', now())->delete())
     ->daily()
     ->name('prune-idempotency-records');

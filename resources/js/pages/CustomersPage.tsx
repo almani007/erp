@@ -28,6 +28,7 @@ export default function CustomersPage() {
                 <Column dataField="tax_no" caption="Tax no." width={150} />
                 <Column dataField="address" visible={false} />
                 <Column dataField="payment_days" caption="Credit days" dataType="number" width={110} />
+                <Column dataField="province" visible={false}><Lookup dataSource={['Punjab', 'Sindh', 'Khyber Pakhtunkhwa', 'Balochistan', 'Islamabad Capital Territory', 'Gilgit-Baltistan', 'Azad Jammu and Kashmir']} /></Column>
                 {features.wholesale && (
                     <Column dataField="price_tier" caption="Price tier" width={130}>
                         <Lookup dataSource={[{ id: 'retail', name: 'Retail' }, { id: 'wholesale', name: 'Wholesale' }]} valueExpr="id" displayExpr="name" />

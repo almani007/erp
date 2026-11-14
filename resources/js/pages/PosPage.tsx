@@ -561,6 +561,29 @@ function Payment({ cart, total, customerId, coupon, wholesale, points, pointValu
 }
 
 function Receipt({ sale, onClose }: { sale: any; onClose: () => void }) {
+    // Reported to FBR right away when the branch is set up for it; the number and QR go on the receipt.
+    const [fiscal, setFiscal] = useState<{ status: string; fiscal_invoice_no: string | null; last_error: string | null } | null>(null);
+    const [qr, setQr] = useState<string | null>(null);
+    useEffect(() => {
+        api.post(`/integrations/fbr/sales/${sale.id}`).then(async (r) => {
+            setFiscal(r.data.data);
+            if (r.data.data?.fiscal_invoice_no) {
+                const QRCode = (await import('qrcode')).default;
+                setQr(await QRCode.toDataURL(r.data.data.fiscal_invoice_no, { width: 120, margin: 1 }));
+            }
+        }).catch(() => setFiscal(null));
+    }, [sale.id]);
+
+    const share = async () => {
+        try {
+            const { data } = await api.get(`/integrations/share/sales/${sale.id}`);
+            const phone = (sale.customer?.phone ?? '').replace(/\D/g, '').replace(/^0/, '92');
+            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Your receipt ${sale.sale_no}: ${data.data.url}`)}`, '_blank');
+        } catch (e) {
+            notifyError(e);
+        }
+    };
+
     return (
         <Popup visible title="Sale completed" width={420} height="auto" onHiding={onClose} showCloseButton>
             <div className="erp-receipt">
@@ -580,12 +603,21 @@ function Receipt({ sale, onClose }: { sale: any; onClose: () => void }) {
                 <div className="pos-total-row grand"><span>Total</span><span>{money(sale.grand_total)}</span></div>
                 <div className="pos-total-row"><span>Paid</span><span>{money(sale.paid_total)}</span></div>
                 <div className="pos-total-row"><span>Change</span><span>{money(sale.change_total)}</span></div>
+                {fiscal?.fiscal_invoice_no && (
+                    <div style={{ textAlign: 'center', marginTop: 10 }}>
+                        <div className="erp-muted">FBR invoice no.</div>
+                        <div style={{ fontWeight: 700 }}>{fiscal.fiscal_invoice_no}</div>
+                        {qr && <img src={qr} alt="FBR QR code" width={120} height={120} />}
+                    </div>
+                )}
+                {fiscal && !fiscal.fiscal_invoice_no && <div className="erp-muted" style={{ marginTop: 8 }}>FBR: pending — it will be sent automatically.</div>}
                 {(sale.points_earned > 0 || sale.points_redeemed > 0) && (
                     <div className="pos-total-row"><span>Loyalty points</span><span>+{sale.points_earned} earned{sale.points_redeemed > 0 ? `, ${sale.points_redeemed} used` : ''}</span></div>
                 )}
             </div>
             <div className="erp-actions">
                 <Button text="Print" icon="print" onClick={() => window.print()} />
+                {sale.customer?.phone && <Button text="WhatsApp" icon="message" onClick={share} />}
                 <Button text="New sale" type="default" onClick={onClose} />
             </div>
         </Popup>

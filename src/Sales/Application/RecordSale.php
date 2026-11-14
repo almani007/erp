@@ -250,7 +250,7 @@ final class RecordSale
             'channel' => $sale->channel,
         ]);
 
-        return $sale->load(['items', 'tenders', 'customer:id,name,customer_code']);
+        return $sale->load(['items', 'tenders', 'customer:id,name,customer_code,phone']);
     }
 
     /**

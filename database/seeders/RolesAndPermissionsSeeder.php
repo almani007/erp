@@ -39,6 +39,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         'finance.budget.manage', 'finance.recurring.manage', 'finance.year.close',
         'restaurant.order.manage', 'restaurant.kitchen.view', 'restaurant.setup.manage',
         'bookings.manage', 'bookings.setup', 'rentals.manage',
+        'integration.manage', 'integration.message.send', 'integration.import',
 
         'purchasing.supplier.view', 'purchasing.supplier.manage', 'purchasing.order.view', 'purchasing.order.create',
         'purchasing.order.approve', 'purchasing.receipt.create', 'purchasing.payment.create',
@@ -66,7 +67,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'sales.sale.view', 'sales.customer.view', 'sales.payment.receive', 'sales.receivable.view', 'sales.order.view', 'inventory.stock.view', 'catalog.product.view',
             'purchasing.payable.view', 'purchasing.bill.override', 'purchasing.payment.create',
             'assets.view', 'assets.manage', 'assets.dispose', 'assets.depreciation.run',
-            'banking.view', 'banking.manage', 'banking.cheque.manage', 'banking.reconcile',
+            'banking.view', 'banking.manage', 'banking.cheque.manage', 'banking.reconcile', 'integration.message.send',
             'finance.budget.manage', 'finance.recurring.manage', 'finance.year.close',
             'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.order.approve', 'purchasing.payment.create',
             'identity.audit.view', 'reporting.dashboard.view', 'reporting.analytics.view',
@@ -81,6 +82,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'people.employee.view', 'people.payroll.manage',
         ],
         'branch_manager' => [
+            'integration.message.send', 'integration.import',
             'restaurant.order.manage', 'restaurant.kitchen.view', 'restaurant.setup.manage', 'bookings.manage', 'bookings.setup', 'rentals.manage',
             'catalog.product.view', 'catalog.product.manage', 'catalog.master.manage', 'catalog.pricing.manage',
             'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage', 'inventory.count.manage',

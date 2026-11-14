@@ -173,6 +173,39 @@ advances; payment posts salaries payable against cash or bank. Printable payslip
 settings (`payroll.month_days` 30, `payroll.hours_per_day` 8, `payroll.overtime_rate` 1). Income
 tax is entered per employee, not computed from tax slabs; leave balances are not tracked yet.
 
+### Integrations
+
+Administration → Integrations.
+
+- **FBR, per branch.** *POS integration* (Tier-1 retail): every till sale and return is reported
+  with the branch's POS ID and token; the receipt shows the FBR invoice number and its QR code.
+  *Digital Invoicing*: back-office invoices are reported with the PRAL token, seller NTN and
+  province, buyer NTN / province and each product's HS / PCT code. A sale never waits on FBR: if
+  FBR is slow or down the submission is retried with back-off (up to 12 times) and listed with
+  its error and a Retry button. Sandbox and live endpoints are FBR's published defaults and can be
+  overridden. **Payload field names follow FBR's published specifications as of writing — run your
+  first invoices in FBR's sandbox and compare with the current technical specification before
+  going live.**
+- **WhatsApp, SMS, email.** WhatsApp Business Cloud API (your phone number ID and token, with an
+  approved template for business-initiated messages), any HTTP SMS gateway (URL with `{to}` and
+  `{message}`), and email through `MAIL_*` in `.env`. Automatic: a receipt / invoice link after a
+  sale to a known customer, overdue-invoice reminders N days after due (`1,7,30` by default) and
+  appointment reminders the evening before. Every message is logged with its outcome.
+- **Share links.** Receipts and invoices open from a signed link that expires after 60 days, no
+  login needed; the POS receipt has a WhatsApp button.
+- **Webhooks.** Subscribe a URL to events (`sales.sale.completed`, `sales.sale.returned`,
+  `purchasing.goods.received`, … or `*`). Each POST carries `X-ERP-Event`, `X-ERP-Delivery` and
+  `X-ERP-Signature: sha256=<HMAC-SHA256 of the raw body with the subscription secret>`; non-2xx
+  answers are retried with back-off (10 attempts). Delivery history per subscription.
+- **API keys.** A key for another system (website, marketplace sync, BI) acting with one role's
+  permissions; shown once, revocable. Calls go to `/api/v1/...` with `Authorization: Bearer <key>`,
+  `X-Branch-ID` for branch-scoped data and `Idempotency-Key` on posting calls.
+- **Import.** Products, customers and suppliers from CSV (templates downloadable): a check run
+  reports problems row by row without saving; existing SKUs / phone numbers / names are updated.
+
+`integration:relay` (every minute) publishes the transactional outbox to FBR and webhooks;
+`integration:reminders` (daily 18:05) sends reminders. Both run in the scheduler container.
+
 ### Restaurants, appointments, rentals and manufacturing
 
 **Restaurant** (Selling → Restaurant, Kitchen display; Administration → Restaurant setup). Tables
@@ -244,6 +277,7 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | People (HR & payroll) | wired | Employees, attendance register, advances and loans, monthly payroll with maker-checker approval, journals, payslips |
 | Accounting tools | wired | General ledger, monthly / branch P&L, cash flow, budget vs actual, sales tax summary, budgets, recurring journals, year-end close |
 | Banking | wired | Bank and cash accounts, cheque register with post-dated cheques, transfers, bank reconciliation with CSV statement matching |
+| Integrations | wired | FBR POS and Digital Invoicing with retries, WhatsApp / SMS / email with automatic reminders, signed share links, signed webhooks, API keys, CSV import |
 | Restaurant | wired | Floor plan, dine-in / takeaway / delivery, modifiers, KOT per station, kitchen display, split settlement |
 | Appointments | wired | Resources with working hours, calendar, clash checks, free slots, WhatsApp reminders, billing |
 | Rentals | wired | Contracts, deposits, nightly rent invoicing, returns with deductions |

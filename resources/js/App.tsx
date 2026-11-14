@@ -41,6 +41,7 @@ import KitchenPage from './pages/KitchenPage';
 import RestaurantSetupPage from './pages/RestaurantSetupPage';
 import BookingsPage from './pages/BookingsPage';
 import RentalsPage from './pages/RentalsPage';
+import IntegrationsPage from './pages/IntegrationsPage';
 import SaasTenantsPage from './pages/saas/SaasTenantsPage';
 import SaasTemplatesPage from './pages/saas/SaasTemplatesPage';
 
@@ -78,6 +79,7 @@ export default function App() {
                 <Route path="/restaurant-setup" element={<RestaurantSetupPage />} />
                 <Route path="/appointments" element={<BookingsPage />} />
                 <Route path="/rentals" element={<RentalsPage />} />
+                <Route path="/integrations" element={<IntegrationsPage />} />
                 <Route path="/records/:typeKey" element={<RecordsPage />} />
                 <Route path="/products" element={<ProductsPage />} />
                 <Route path="/master-data" element={<MasterDataPage />} />

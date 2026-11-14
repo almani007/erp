@@ -78,6 +78,7 @@ const NAV: { section: string; links: NavLink[] }[] = [
     {
         section: 'Administration', links: [
             { text: 'Business & branches', icon: 'map', path: '/organization' },
+            { text: 'Integrations', icon: 'link', path: '/integrations', permission: 'integration.manage' },
             { text: 'Restaurant setup', icon: 'preferences', path: '/restaurant-setup', permission: 'restaurant.setup.manage', module: 'restaurant' },
             { text: 'Custom records', icon: 'columnfield', path: '/record-types', permission: 'organization.settings.view', module: 'records' },
             { text: 'Users & roles', icon: 'key', path: '/users', permission: 'identity.user.view' },

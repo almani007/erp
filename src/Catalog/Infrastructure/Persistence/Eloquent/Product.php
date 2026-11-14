@@ -51,6 +51,7 @@ final class Product extends Model
         'warranty_months',
         'kitchen_station',
         'duration_minutes',
+        'hs_code',
         'reorder_level',
         'status',
         'description',

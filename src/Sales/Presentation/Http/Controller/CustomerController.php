@@ -145,6 +145,7 @@ final class CustomerController
             'tax_no' => ['nullable', 'string', 'max:80'],
             'address' => ['nullable', 'string', 'max:300'],
             'payment_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+            'province' => ['nullable', 'string', 'max:40'],
             'credit_limit' => ['sometimes', 'numeric', 'min:0', 'decimal:0,2'],
             ...Customer::customFieldRules(),
             'price_tier' => ['sometimes', 'in:retail,wholesale'],

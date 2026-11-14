@@ -102,6 +102,7 @@ final class ProductController
             'warranty_months' => ['sometimes', 'integer', 'min:0', 'max:240'],
             'kitchen_station' => ['nullable', 'string', 'max:40'],
             'duration_minutes' => ['nullable', 'integer', 'min:5', 'max:1440'],
+            'hs_code' => ['nullable', 'string', 'max:20'],
             ...Product::customFieldRules(),
             'barcodes' => ['sometimes', 'array', 'max:20'],
             'barcodes.*' => ['string', 'max:128'],
