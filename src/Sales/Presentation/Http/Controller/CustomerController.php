@@ -118,11 +118,19 @@ final class CustomerController
             'method' => ['required', 'in:cash,bank'],
             'amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
             'reference' => ['nullable', 'string', 'max:120'],
+            // Optional: which invoices this pays. Without it, the oldest are paid first.
+            'allocations' => ['sometimes', 'array', 'max:200'],
+            'allocations.*.sale_id' => ['required', 'uuid', 'distinct'],
+            'allocations.*.amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
         ]);
+
+        $allocations = isset($data['allocations'])
+            ? collect($data['allocations'])->mapWithKeys(fn (array $a): array => [$a['sale_id'] => (string) $a['amount']])->all()
+            : null;
 
         $payment = $action->execute(
             $customerId, $data['company_id'], $branches->activeBranchId(), $data['method'],
-            (string) $data['amount'], $data['reference'] ?? null, $request->user()->id,
+            (string) $data['amount'], $data['reference'] ?? null, $request->user()->id, $allocations,
         );
 
         return new JsonResponse(['data' => $payment], 201);
@@ -135,6 +143,8 @@ final class CustomerController
             'phone' => ['nullable', 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:150'],
             'tax_no' => ['nullable', 'string', 'max:80'],
+            'address' => ['nullable', 'string', 'max:300'],
+            'payment_days' => ['nullable', 'integer', 'min:0', 'max:365'],
             'credit_limit' => ['sometimes', 'numeric', 'min:0', 'decimal:0,2'],
             ...Customer::customFieldRules(),
             'price_tier' => ['sometimes', 'in:retail,wholesale'],

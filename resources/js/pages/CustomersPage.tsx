@@ -26,6 +26,8 @@ export default function CustomersPage() {
                 <Column dataField="phone" width={150} />
                 <Column dataField="email" />
                 <Column dataField="tax_no" caption="Tax no." width={150} />
+                <Column dataField="address" visible={false} />
+                <Column dataField="payment_days" caption="Credit days" dataType="number" width={110} />
                 {features.wholesale && (
                     <Column dataField="price_tier" caption="Price tier" width={130}>
                         <Lookup dataSource={[{ id: 'retail', name: 'Retail' }, { id: 'wholesale', name: 'Wholesale' }]} valueExpr="id" displayExpr="name" />

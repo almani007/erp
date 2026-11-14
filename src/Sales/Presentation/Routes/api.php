@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Sales\Presentation\Http\Controller\CustomerController;
+use Sales\Presentation\Http\Controller\ReceivablesController;
+use Sales\Presentation\Http\Controller\SalesOrderController;
 use Sales\Presentation\Http\Controller\SaleController;
 use Sales\Presentation\Http\Controller\ShiftController;
 
@@ -38,6 +40,23 @@ Route::middleware(['auth:sanctum', 'module:sales'])->group(function (): void {
     Route::get('sales-returns', [SaleController::class, 'returns'])->middleware('permission:sales.sale.view');
     Route::post('sales/{saleId}/returns', [SaleController::class, 'storeReturn'])->middleware(['permission:sales.return.create', 'idempotent']);
     Route::post('sales/{saleId}/void', [SaleController::class, 'void'])->middleware('permission:sales.sale.void');
+
+    // Quotations → sales orders → invoices (back office, on account).
+    $orders = 'permission:sales.order.manage';
+    Route::get('sales-documents', [SalesOrderController::class, 'index'])->middleware('permission:sales.order.view|sales.order.manage');
+    Route::get('sales-documents/{id}', [SalesOrderController::class, 'show'])->middleware('permission:sales.order.view|sales.order.manage');
+    Route::post('sales-documents', [SalesOrderController::class, 'store'])->middleware($orders);
+    Route::put('sales-documents/{id}', [SalesOrderController::class, 'update'])->middleware($orders);
+    Route::post('sales-documents/{id}/status', [SalesOrderController::class, 'quotationStatus'])->middleware($orders);
+    Route::post('sales-documents/{id}/convert', [SalesOrderController::class, 'convert'])->middleware($orders);
+    Route::post('sales-documents/{id}/cancel', [SalesOrderController::class, 'cancel'])->middleware($orders);
+    Route::post('sales-documents/{id}/invoice', [SalesOrderController::class, 'invoice'])->middleware(['permission:sales.invoice.create', 'idempotent']);
+
+    // Receivables.
+    $ar = 'permission:sales.receivable.view';
+    Route::get('receivables/aging', [ReceivablesController::class, 'aging'])->middleware($ar);
+    Route::get('customers/{customerId}/open-invoices', [ReceivablesController::class, 'openInvoices'])->middleware('permission:sales.receivable.view|sales.payment.receive');
+    Route::get('customers/{customerId}/statement', [ReceivablesController::class, 'statement'])->middleware($ar);
 });
 
 // Outside the module gate: every signed-in user needs it to build the menu,

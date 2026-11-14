@@ -26,11 +26,12 @@ final class Sale extends Model
         'sale_no', 'status', 'currency', 'subtotal', 'discount_total', 'tax_total', 'grand_total',
         'paid_total', 'change_total', 'cost_total', 'journal_entry_id', 'idempotency_key', 'sold_at',
         'voided_at', 'voided_by', 'void_reason', 'coupon_code', 'points_earned', 'points_redeemed', 'price_tier',
+        'channel', 'due_date', 'sales_order_id', 'reference', 'notes', 'balance_due',
     ];
 
     protected function casts(): array
     {
-        return ['sold_at' => 'datetime', 'voided_at' => 'datetime'];
+        return ['sold_at' => 'datetime', 'voided_at' => 'datetime', 'due_date' => 'date:Y-m-d'];
     }
 
     /** @return HasMany<SaleItem, $this> */

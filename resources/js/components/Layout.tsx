@@ -32,6 +32,8 @@ const NAV: { section: string; links: NavLink[] }[] = [
         section: 'Selling', links: [
             { text: 'Point of Sale', icon: 'cart', path: '/pos', permission: 'sales.sale.create', module: 'sales' },
             { text: 'Sales & returns', icon: 'money', path: '/sales', permission: 'sales.sale.view', module: 'sales' },
+            { text: 'Quotations & orders', icon: 'textdocument', path: '/sales-documents', permission: 'sales.order.view', module: 'sales' },
+            { text: 'Receivables', icon: 'money', path: '/receivables', permission: 'sales.receivable.view', module: 'sales' },
             { text: 'Customers', icon: 'group', path: '/customers', permission: 'sales.customer.view', module: 'sales' },
             { text: 'Price checker', icon: 'search', path: '/price-checker', permission: 'catalog.product.view', module: 'catalog' },
             { text: 'Serial & warranty', icon: 'tags', path: '/serials', permission: 'sales.sale.view', feature: 'serials', module: 'sales' },

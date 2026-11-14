@@ -92,6 +92,23 @@ materials for a quantity of a product, with wastage %. It is used one of two way
 Demo: *Doodh Patti Chai (cup)* uses milk, tea and sugar when sold; *Sweet Lassi* is produced in
 batches of 10 from yogurt and sugar.
 
+### Quotations, sales orders, invoices and receivables
+
+Selling → Quotations & orders. A quotation (validity date, credit days, price list, customer PO
+reference, terms) is marked sent / accepted / rejected and converted into a sales order. Prices
+are worked out by the same engine as the till when the document is saved, then fixed. An order
+is invoiced in one go or in parts (serials entered per unit where tracked); each invoice takes
+stock out of the order's warehouse, books revenue, tax and cost, puts the unpaid part on the
+customer's account within the credit limit, and is due after the credit days. Voiding an
+invoice reopens its quantities on the order; an invoice with receipts applied cannot be voided.
+
+Selling → Receivables. Aging by customer (not due, 1–30, 31–60, 61–90, 90+ days past due),
+statements of account for any period, and receipts applied to the oldest invoices first or to
+invoices you pick. Returns credited to the account reduce that invoice's balance.
+
+Quotations, orders, invoices and statements print on A4 (or save as PDF) with the company name
+and NTN, customer details and the terms set under Quotations & orders → Print settings.
+
 ### HR and payroll
 
 Finance → HR & payroll. Employees (monthly salary or daily wage, named allowances and
@@ -152,7 +169,8 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | Production | wired | Recipes / bills of materials with wastage, production orders (plan, complete with actual usage and overheads, cancel), recipe items that consume ingredients on sale |
 | CRM | partial, **not wired** | Unreviewed scaffolding from an earlier pass; no routes, not registered in `bootstrap/providers.php` |
 | People (HR & payroll) | wired | Employees, attendance register, advances and loans, monthly payroll with maker-checker approval, journals, payslips |
-| Order management, Delivery, Workflow, billing for SaaS plans, offline POS sync | not started | — |
+| Sales documents | wired | Quotations, sales orders, partial invoicing on credit terms, receipts allocated to invoices, aging, statements, A4 printing |
+| Order management (delivery notes, stock reservation), Delivery, Workflow, billing for SaaS plans, offline POS sync | not started | — |
 
 Known gaps inside the wired modules: supplier-invoice matching (the liability is booked at
 receipt, at order prices), supplier advances and purchase returns, buy-X-get-Y and stacked

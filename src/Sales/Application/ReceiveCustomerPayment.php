@@ -9,6 +9,8 @@ use Finance\Application\Dto\JournalLineDraft;
 use Finance\Application\PostingAccounts;
 use Finance\Application\PostJournalEntry;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Sales\Infrastructure\Persistence\Eloquent\Sale;
 use Sales\Infrastructure\Persistence\Eloquent\Customer;
 use Sales\Infrastructure\Persistence\Eloquent\CustomerPayment;
 use Shared\Domain\Contract\AuditTrail;
@@ -33,9 +35,12 @@ final class ReceiveCustomerPayment
         private readonly AuditTrail $audit,
     ) {}
 
-    public function execute(string $customerId, string $companyId, ?string $branchId, string $method, string $amount, ?string $reference, string $actorId): CustomerPayment
+    /**
+     * @param  array<string, string>|null  $allocations  sale id => amount; null = oldest invoices first
+     */
+    public function execute(string $customerId, string $companyId, ?string $branchId, string $method, string $amount, ?string $reference, string $actorId, ?array $allocations = null): CustomerPayment
     {
-        return DB::transaction(function () use ($customerId, $companyId, $branchId, $method, $amount, $reference, $actorId): CustomerPayment {
+        return DB::transaction(function () use ($customerId, $companyId, $branchId, $method, $amount, $reference, $actorId, $allocations): CustomerPayment {
             $customer = Customer::query()->lockForUpdate()->findOrFail($customerId);
             $amount = Decimal::round($amount, 2);
 
@@ -69,11 +74,55 @@ final class ReceiveCustomerPayment
 
             $payment->update(['journal_entry_id' => $journal->id]);
             $customer->forceFill(['balance' => Decimal::sub((string) $customer->balance, $amount)])->save();
+            $this->allocate($payment, $amount, $allocations);
 
             $this->audit->record('sales.customer.payment_received', 'customer', $customer->id, null,
                 ['receipt_no' => $payment->receipt_no, 'amount' => $amount, 'method' => $method]);
 
-            return $payment;
+            return $payment->load('allocations');
         });
+    }
+
+    /**
+     * Applies the receipt to the customer's open invoices: the ones named,
+     * or the oldest due first. What is left is unapplied credit on the account.
+     *
+     * @param  array<string, string>|null  $requested
+     */
+    private function allocate(CustomerPayment $payment, string $amount, ?array $requested): void
+    {
+        $open = Sale::query()->where('customer_id', $payment->customer_id)->where('status', Sale::COMPLETED)
+            ->where('balance_due', '>', 0)
+            ->when($requested !== null, fn ($q) => $q->whereIn('id', array_keys($requested)))
+            ->orderByRaw('COALESCE(due_date, sold_at::date)')->orderBy('sold_at')
+            ->lockForUpdate()->get();
+
+        if ($requested !== null && $open->count() !== count($requested)) {
+            throw new \DomainException('One of the selected invoices is not open for this customer.');
+        }
+
+        $left = $amount;
+        foreach ($open as $sale) {
+            if (! Decimal::isPositive($left)) {
+                break;
+            }
+            $due = (string) $sale->balance_due;
+            $want = $requested !== null ? Decimal::round((string) $requested[$sale->id], 2) : $due;
+            $take = self::smaller(self::smaller($want, $due), $left);
+            if (! Decimal::isPositive($take)) {
+                continue;
+            }
+
+            DB::table('customer_payment_allocations')->insert([
+                'id' => (string) Str::uuid7(), 'customer_payment_id' => $payment->id, 'sale_id' => $sale->id, 'amount' => $take,
+            ]);
+            $sale->update(['balance_due' => Decimal::sub($due, $take)]);
+            $left = Decimal::sub($left, $take);
+        }
+    }
+
+    private static function smaller(string $a, string $b): string
+    {
+        return Decimal::cmp($a, $b) <= 0 ? $a : $b;
     }
 }

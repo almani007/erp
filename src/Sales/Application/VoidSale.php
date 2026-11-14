@@ -49,9 +49,18 @@ final class VoidSale
                 throw new \DomainException("Sale {$sale->sale_no} has returns against it and cannot be voided.");
             }
 
-            $shift = PosShift::query()->lockForUpdate()->findOrFail($sale->shift_id);
-            if (! $shift->isOpen()) {
-                throw new \DomainException("Sale {$sale->sale_no} belongs to a closed shift and can no longer be voided.");
+            if ($sale->shift_id !== null) {
+                $shift = PosShift::query()->lockForUpdate()->findOrFail($sale->shift_id);
+                if (! $shift->isOpen()) {
+                    throw new \DomainException("Sale {$sale->sale_no} belongs to a closed shift and can no longer be voided.");
+                }
+            } elseif (DB::table('customer_payment_allocations')->where('sale_id', $sale->id)->exists()) {
+                throw new \DomainException("Invoice {$sale->sale_no} has payments applied to it. Record a return instead.");
+            }
+
+            // An invoice from a sales order: those quantities can be invoiced again.
+            if ($sale->sales_order_id !== null) {
+                app(\Sales\Application\ManageSalesOrders::class)->releaseInvoice($sale);
             }
 
             foreach ($sale->items as $item) {
@@ -96,6 +105,7 @@ final class VoidSale
 
             $sale->update([
                 'status' => Sale::VOIDED,
+                'balance_due' => '0',
                 'voided_at' => now(),
                 'voided_by' => $actorId,
                 'void_reason' => $reason,

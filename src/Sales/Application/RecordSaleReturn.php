@@ -214,6 +214,15 @@ final class RecordSaleReturn
         $customer = Customer::query()->lockForUpdate()->findOrFail($sale->customer_id);
         $customer->forceFill(['balance' => Decimal::sub((string) $customer->balance, $total)])->save();
 
+        // The credit first reduces what is still owed on this invoice; any
+        // excess stays on the account as unapplied credit.
+        $locked = Sale::query()->lockForUpdate()->findOrFail($sale->id);
+        $due = (string) $locked->balance_due;
+        $applied = Decimal::cmp($total, $due) > 0 ? $due : $total;
+        if (Decimal::isPositive($applied)) {
+            $locked->update(['balance_due' => Decimal::sub($due, $applied)]);
+        }
+
         return $customer;
     }
 

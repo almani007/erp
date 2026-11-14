@@ -61,6 +61,13 @@ final class ShiftController
             'loyalty' => $loyalty->config(),
             // What the plan includes; the menu hides switched-off modules and features.
             'entitlements' => app(\Saas\Application\Entitlements::class)->summary(),
+            // Letterhead for printed quotations, invoices and statements.
+            'company' => \Organization\Infrastructure\Persistence\Eloquent\Company::query()->orderBy('created_at')
+                ->first(['id', 'legal_name', 'tax_registration_no', 'base_currency']),
+            'print' => [
+                'invoice_terms' => $settings->get('sales', 'invoice_terms'),
+                'quotation_terms' => $settings->get('sales', 'quotation_terms'),
+            ],
         ]]);
     }
 

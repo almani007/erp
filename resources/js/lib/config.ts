@@ -54,6 +54,8 @@ export interface AppConfig {
     loyalty: { earn_per_amount: string; point_value: string; enabled: boolean };
     /** What the plan includes, set by the platform operator. */
     entitlements?: { modules: Partial<Record<ModuleName, boolean>>; features: Partial<Features> };
+    company?: { id: string; legal_name: string; tax_registration_no: string | null; base_currency: string } | null;
+    print?: { invoice_terms?: string | null; quotation_terms?: string | null };
 }
 
 export function presetFeatures(type: string | undefined): Features {

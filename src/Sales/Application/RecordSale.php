@@ -17,6 +17,7 @@ use Inventory\Domain\Repository\StockLedger;
 use Inventory\Domain\StockPosting;
 use Organization\Infrastructure\Persistence\Eloquent\Company;
 use Sales\Domain\Enum\PaymentMethod;
+use Sales\Domain\SaleOrigin;
 use Sales\Domain\Exception\CreditLimitExceeded;
 use Sales\Domain\Exception\ShiftNotOpen;
 use Sales\Infrastructure\Persistence\Eloquent\Customer;
@@ -69,127 +70,187 @@ final class RecordSale
             $shift = PosShift::query()->where('cashier_id', $cashierId)->where('status', 'open')->lockForUpdate()->first()
                 ?? throw ShiftNotOpen::forCashier();
             $terminal = $shift->terminal;
-            $company = Company::query()->findOrFail($shift->company_id);
 
+            $origin = new SaleOrigin(
+                companyId: $shift->company_id, branchId: $shift->branch_id, warehouseId: $terminal->warehouse_id,
+                userId: $cashierId, channel: SaleOrigin::POS, terminalId: $terminal->id, shiftId: $shift->id,
+            );
             $priced = $this->cart->price($lines, $mayOverridePrice, $shift->branch_id, $couponCode, $customerId, $priceTier);
-            $grandTotal = $priced['grand_total'];
 
-            if (! Decimal::isPositive($grandTotal)) {
-                throw new \DomainException('The sale total must be greater than zero.');
-            }
-
-            [$tenderRows, $paid, $change, $onCredit, $byPoints] = $this->settle($tenders, $grandTotal);
-            $customer = $this->chargeCustomer($customerId, $onCredit, $byPoints);
-
-            $sale = Sale::query()->create([
-                'company_id' => $company->id,
-                'branch_id' => $shift->branch_id,
-                'warehouse_id' => $terminal->warehouse_id,
-                'terminal_id' => $terminal->id,
-                'shift_id' => $shift->id,
-                'cashier_id' => $cashierId,
-                'customer_id' => $customer?->id,
-                'sale_no' => $this->numbers->next($this->tenant->requireId(), 'sale', $shift->branch_id, 'INV'),
-                'status' => Sale::COMPLETED,
-                'currency' => $company->base_currency,
-                'subtotal' => $priced['subtotal'],
-                'discount_total' => $priced['discount_total'],
-                'tax_total' => $priced['tax_total'],
-                'grand_total' => $grandTotal,
-                'paid_total' => $paid,
-                'change_total' => $change,
-                'cost_total' => '0',
-                'idempotency_key' => $idempotencyKey,
-                'coupon_code' => $priced['coupon']?->code,
-                'price_tier' => $priced['price_tier'],
-                'sold_at' => now(),
-            ]);
-
-            $this->redeemCoupon($priced['coupon']?->id);
-
-            $costTotal = '0';
-
-            foreach ($priced['lines'] as $line) {
-                $product = $line['product'];
-                $unitCost = '0';
-
-                if ($product->product_type->tracksInventory()) {
-                    $unitCost = $this->stock->issue(new StockPosting(
-                        $company->id, $terminal->warehouse_id, $product->id, $line['base_quantity'],
-                        MovementType::Sale, 'sale', $sale->id,
-                    ));
-                    $costTotal = Decimal::add($costTotal, Decimal::mul($line['base_quantity'], $unitCost, 2));
-                } else {
-                    // A recipe item (dish, drink): its ingredients leave stock instead.
-                    $recipeCost = app(RecipeConsumption::class)->consume(
-                        $company->id, $terminal->warehouse_id, $product->id, $line['base_quantity'], $sale->id,
-                    );
-                    if ($recipeCost !== null) {
-                        $unitCost = $recipeCost;
-                        $costTotal = Decimal::add($costTotal, Decimal::mul($line['base_quantity'], $unitCost, 2));
-                    }
-                }
-
-                $saleItem = SaleItem::query()->create([
-                    'sale_id' => $sale->id,
-                    'product_id' => $product->id,
-                    'sku' => $product->sku,
-                    'product_name' => $product->name,
-                    'quantity' => $line['quantity'],
-                    'unit_price' => $line['unit_price'],
-                    'discount_amount' => $line['discount'],
-                    'tax_rate' => $line['tax_rate'],
-                    'tax_amount' => $line['tax'],
-                    'net_amount' => $line['net'],
-                    'line_total' => $line['total'],
-                    'cost_snapshot' => $unitCost,
-                    'promotion_name' => $line['promotion_name'],
-                    'unit_name' => $line['unit_name'],
-                    'unit_factor' => $line['unit_factor'],
-                ]);
-
-                $this->recordSerials($sale, $saleItem, $product, $line, $customer?->id);
-            }
-
-            foreach ($tenderRows as $row) {
-                SaleTender::query()->create(['sale_id' => $sale->id] + $row);
-            }
-
-            $journal = $this->postJournal->execute(new JournalDraft(
-                companyId: $company->id,
-                postingDate: now()->toDateString(),
-                sourceType: 'sale',
-                sourceId: $sale->id,
-                description: "POS sale {$sale->sale_no}",
-                lines: $this->journalLines($sale, $tenderRows, $change, $priced['net_total'], $priced['tax_total'], $costTotal, $customer),
-            ));
-
-            // Points: spend first, then earn on what was paid with real money.
-            $redeemed = 0;
-            $earned = 0;
-            if ($customer !== null) {
-                if (Decimal::isPositive($byPoints)) {
-                    $redeemed = $this->loyalty->pointsToCover($byPoints);
-                    $this->loyalty->move($customer, -$redeemed, 'redeem', 'sale', $sale->id);
-                }
-                $earned = $this->loyalty->pointsFor(Decimal::sub($grandTotal, $byPoints));
-                $this->loyalty->move($customer, $earned, 'earn', 'sale', $sale->id);
-            }
-
-            $sale->update([
-                'cost_total' => $costTotal, 'journal_entry_id' => $journal->id,
-                'points_earned' => $earned, 'points_redeemed' => $redeemed,
-            ]);
-
-            $this->outbox->record('sales.sale.completed', 'sale', $sale->id, [
-                'sale_no' => $sale->sale_no,
-                'branch_id' => $sale->branch_id,
-                'grand_total' => $grandTotal,
-                'currency' => $sale->currency,
-            ]);
-
-            return $sale->load(['items', 'tenders', 'customer:id,name,customer_code']);
+            return $this->record($origin, $priced, $tenders, $customerId, $idempotencyKey);
         });
+    }
+
+    /**
+     * A back-office (credit) invoice: no shift or terminal. Whatever is not
+     * paid now goes on the customer's account, within their credit limit.
+     *
+     * @param  list<array{product_id: string, quantity: string|int|float, unit_price?: string|int|float|null, discount?: string|int|float|null}>  $lines
+     */
+    public function invoice(
+        SaleOrigin $origin,
+        array $lines,
+        string $customerId,
+        ?string $priceTier,
+        string $paidNow,
+        string $paidBy,
+        ?string $idempotencyKey,
+    ): Sale {
+        return DB::transaction(function () use ($origin, $lines, $customerId, $priceTier, $paidNow, $paidBy, $idempotencyKey): Sale {
+            // Prices on an invoice were agreed on the order, so they are taken as given.
+            $priced = $this->cart->price($lines, true, $origin->branchId, null, $customerId, $priceTier);
+            $total = $priced['grand_total'];
+
+            $paid = Decimal::round($paidNow, 2);
+            if (Decimal::cmp($paid, $total) > 0) {
+                $paid = $total;
+            }
+            $tenders = [];
+            if (Decimal::isPositive($paid)) {
+                $tenders[] = ['method' => $paidBy, 'amount' => $paid];
+            }
+            $onAccount = Decimal::sub($total, $paid, 2);
+            if (Decimal::isPositive($onAccount)) {
+                $tenders[] = ['method' => PaymentMethod::Credit->value, 'amount' => $onAccount];
+            }
+
+            return $this->record($origin, $priced, $tenders, $customerId, $idempotencyKey);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $priced  from PriceCart::price
+     * @param  list<array{method: string, amount: string|int|float, reference?: string|null}>  $tenders
+     */
+    private function record(SaleOrigin $origin, array $priced, array $tenders, ?string $customerId, ?string $idempotencyKey): Sale
+    {
+        $company = Company::query()->findOrFail($origin->companyId);
+        $grandTotal = $priced['grand_total'];
+
+        if (! Decimal::isPositive($grandTotal)) {
+            throw new \DomainException('The sale total must be greater than zero.');
+        }
+
+        [$tenderRows, $paid, $change, $onCredit, $byPoints] = $this->settle($tenders, $grandTotal);
+        $customer = $this->chargeCustomer($customerId, $onCredit, $byPoints);
+
+        $sale = Sale::query()->create([
+            'company_id' => $company->id,
+            'branch_id' => $origin->branchId,
+            'warehouse_id' => $origin->warehouseId,
+            'terminal_id' => $origin->terminalId,
+            'shift_id' => $origin->shiftId,
+            'cashier_id' => $origin->userId,
+            'customer_id' => $customer?->id,
+            'sale_no' => $origin->isPos()
+                ? $this->numbers->next($this->tenant->requireId(), 'sale', $origin->branchId, 'INV')
+                : $this->numbers->next($this->tenant->requireId(), 'sales_invoice', $origin->branchId, 'SI'),
+            'channel' => $origin->channel,
+            'due_date' => $origin->dueDate,
+            'sales_order_id' => $origin->salesOrderId,
+            'reference' => $origin->reference,
+            'notes' => $origin->notes,
+            'status' => Sale::COMPLETED,
+            'currency' => $company->base_currency,
+            'subtotal' => $priced['subtotal'],
+            'discount_total' => $priced['discount_total'],
+            'tax_total' => $priced['tax_total'],
+            'grand_total' => $grandTotal,
+            'paid_total' => $paid,
+            'change_total' => $change,
+            'cost_total' => '0',
+            'balance_due' => $onCredit,
+            'idempotency_key' => $idempotencyKey,
+            'coupon_code' => $priced['coupon']?->code,
+            'price_tier' => $priced['price_tier'],
+            'sold_at' => now(),
+        ]);
+
+        $this->redeemCoupon($priced['coupon']?->id);
+
+        $costTotal = '0';
+
+        foreach ($priced['lines'] as $line) {
+            $product = $line['product'];
+            $unitCost = '0';
+
+            if ($product->product_type->tracksInventory()) {
+                $unitCost = $this->stock->issue(new StockPosting(
+                    $company->id, $origin->warehouseId, $product->id, $line['base_quantity'],
+                    MovementType::Sale, 'sale', $sale->id,
+                ));
+                $costTotal = Decimal::add($costTotal, Decimal::mul($line['base_quantity'], $unitCost, 2));
+            } else {
+                // A recipe item (dish, drink): its ingredients leave stock instead.
+                $recipeCost = app(RecipeConsumption::class)->consume(
+                    $company->id, $origin->warehouseId, $product->id, $line['base_quantity'], $sale->id,
+                );
+                if ($recipeCost !== null) {
+                    $unitCost = $recipeCost;
+                    $costTotal = Decimal::add($costTotal, Decimal::mul($line['base_quantity'], $unitCost, 2));
+                }
+            }
+
+            $saleItem = SaleItem::query()->create([
+                'sale_id' => $sale->id,
+                'product_id' => $product->id,
+                'sku' => $product->sku,
+                'product_name' => $product->name,
+                'quantity' => $line['quantity'],
+                'unit_price' => $line['unit_price'],
+                'discount_amount' => $line['discount'],
+                'tax_rate' => $line['tax_rate'],
+                'tax_amount' => $line['tax'],
+                'net_amount' => $line['net'],
+                'line_total' => $line['total'],
+                'cost_snapshot' => $unitCost,
+                'promotion_name' => $line['promotion_name'],
+                'unit_name' => $line['unit_name'],
+                'unit_factor' => $line['unit_factor'],
+            ]);
+
+            $this->recordSerials($sale, $saleItem, $product, $line, $customer?->id);
+        }
+
+        foreach ($tenderRows as $row) {
+            SaleTender::query()->create(['sale_id' => $sale->id] + $row);
+        }
+
+        $journal = $this->postJournal->execute(new JournalDraft(
+            companyId: $company->id,
+            postingDate: now()->toDateString(),
+            sourceType: 'sale',
+            sourceId: $sale->id,
+            description: ($origin->isPos() ? 'POS sale ' : 'Sales invoice ').$sale->sale_no,
+            lines: $this->journalLines($sale, $tenderRows, $change, $priced['net_total'], $priced['tax_total'], $costTotal, $customer),
+        ));
+
+        // Points: spend first, then earn on what was paid with real money.
+        $redeemed = 0;
+        $earned = 0;
+        if ($customer !== null) {
+            if (Decimal::isPositive($byPoints)) {
+                $redeemed = $this->loyalty->pointsToCover($byPoints);
+                $this->loyalty->move($customer, -$redeemed, 'redeem', 'sale', $sale->id);
+            }
+            $earned = $this->loyalty->pointsFor(Decimal::sub($grandTotal, $byPoints));
+            $this->loyalty->move($customer, $earned, 'earn', 'sale', $sale->id);
+        }
+
+        $sale->update([
+            'cost_total' => $costTotal, 'journal_entry_id' => $journal->id,
+            'points_earned' => $earned, 'points_redeemed' => $redeemed,
+        ]);
+
+        $this->outbox->record('sales.sale.completed', 'sale', $sale->id, [
+            'sale_no' => $sale->sale_no,
+            'branch_id' => $sale->branch_id,
+            'grand_total' => $grandTotal,
+            'currency' => $sale->currency,
+            'channel' => $sale->channel,
+        ]);
+
+        return $sale->load(['items', 'tenders', 'customer:id,name,customer_code']);
     }
 
     /**

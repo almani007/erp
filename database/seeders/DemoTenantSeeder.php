@@ -134,6 +134,8 @@ final class DemoTenantSeeder extends Seeder
             app(Settings::class)->set('loyalty', 'earn_per_amount', '100');
             app(Settings::class)->set('loyalty', 'point_value', '1');
             app(Settings::class)->set('business', 'type', 'general'); // shows every trade's fields
+            app(Settings::class)->set('sales', 'quotation_terms', "Prices valid until the date shown. Delivery within 3 working days of order confirmation.");
+            app(Settings::class)->set('sales', 'invoice_terms', "Goods once sold are returnable within 7 days in original condition. Payment due by the due date shown; cheques in the company's name.");
 
             // A tenant-defined field, to show how records can be extended without code.
             CustomField::query()->create(['entity' => 'product', 'key' => 'fabric', 'label' => 'Fabric', 'type' => 'select', 'options' => ['Cotton', 'Lawn', 'Linen', 'Silk'], 'status' => 'active']);

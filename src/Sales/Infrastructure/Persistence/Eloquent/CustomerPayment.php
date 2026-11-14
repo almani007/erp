@@ -24,4 +24,10 @@ final class CustomerPayment extends Model
     {
         return ['received_at' => 'datetime'];
     }
+
+    /** @return \Illuminate\Database\Eloquent\Relations\HasMany<CustomerPaymentAllocation, $this> */
+    public function allocations(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CustomerPaymentAllocation::class);
+    }
 }

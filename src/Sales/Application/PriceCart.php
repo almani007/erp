@@ -90,7 +90,8 @@ final class PriceCart
             $gross = Decimal::mul($unitPrice, $quantity, 2);
 
             // A deal applies to the list price; a manually keyed price is already the cashier's decision.
-            $promotion = $override !== null && Decimal::cmp($override, $listPrice) !== 0
+            // An invoice from a sales order carries the agreed price and discount as they are.
+            $promotion = ! empty($line['agreed']) || ($override !== null && Decimal::cmp($override, $listPrice) !== 0)
                 ? ['discount' => '0', 'name' => null]
                 : $this->pricing->bestPromotion($product, $unitPrice, $quantity, $gross);
 
