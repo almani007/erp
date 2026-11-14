@@ -30,9 +30,9 @@ final class PaySupplier
     ) {}
 
     /** @param  array<string, string>|null  $allocations  bill id => amount; null = oldest due first */
-    public function execute(string $supplierId, string $companyId, string $method, string $amount, ?string $reference, string $actorId, ?array $allocations = null): SupplierPayment
+    public function execute(string $supplierId, string $companyId, string $method, string $amount, ?string $reference, string $actorId, ?array $allocations = null, ?string $cashAccountId = null): SupplierPayment
     {
-        return DB::transaction(function () use ($supplierId, $companyId, $method, $amount, $reference, $actorId, $allocations): SupplierPayment {
+        return DB::transaction(function () use ($supplierId, $companyId, $method, $amount, $reference, $actorId, $allocations, $cashAccountId): SupplierPayment {
             $supplier = Supplier::query()->lockForUpdate()->findOrFail($supplierId);
             $amount = Decimal::round($amount, 2);
 
@@ -59,7 +59,7 @@ final class PaySupplier
                 description: "Payment {$payment->payment_no} to {$supplier->name}",
                 lines: [
                     JournalLineDraft::debit($this->accounts->id($companyId, 'accounts_payable'), $amount, null, null, 'supplier', $supplier->id),
-                    JournalLineDraft::credit($this->accounts->id($companyId, $method === 'cash' ? 'cash' : 'bank'), $amount),
+                    JournalLineDraft::credit($cashAccountId ?? $this->accounts->id($companyId, $method === 'cash' ? 'cash' : 'bank'), $amount),
                 ],
             ));
 

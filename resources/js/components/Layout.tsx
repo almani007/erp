@@ -65,6 +65,7 @@ const NAV: { section: string; links: NavLink[] }[] = [
             { text: 'Chart of accounts', icon: 'bulletlist', path: '/accounts', permission: 'finance.account.view', module: 'finance' },
             { text: 'Journal entries', icon: 'textdocument', path: '/journals', permission: 'finance.journal.view', module: 'finance' },
             { text: 'Financial reports', icon: 'chart', path: '/reports', permission: 'finance.report.view', module: 'finance' },
+            { text: 'Banking & cheques', icon: 'card', path: '/banking', permission: 'banking.view', module: 'finance' },
             { text: 'Fixed assets', icon: 'box', path: '/assets', permission: 'assets.view', module: 'assets' },
             { text: 'HR & payroll', icon: 'group', path: '/people', permission: 'people.employee.view', module: 'people' },
         ],

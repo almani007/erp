@@ -51,6 +51,7 @@
             "Saas\\": "src/Saas/",
             "Records\\": "src/Records/",
             "Assets\\": "src/Assets/",
+            "Banking\\": "src/Banking/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         }

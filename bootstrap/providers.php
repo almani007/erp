@@ -21,6 +21,7 @@ return [
     Production\Infrastructure\Provider\ProductionServiceProvider::class,
     People\Infrastructure\Provider\PeopleServiceProvider::class,
     Assets\Infrastructure\Provider\AssetsServiceProvider::class,
+    Banking\Infrastructure\Provider\BankingServiceProvider::class,
     Records\Infrastructure\Provider\RecordsServiceProvider::class,
     Saas\Infrastructure\Provider\SaasServiceProvider::class,
 ];

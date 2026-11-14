@@ -158,6 +158,15 @@ final class ProvisionTenant
             }
         }
 
+        // The default cash box and bank account, for cheques, transfers and reconciliation.
+        foreach (['cash' => 'Cash in hand', 'bank' => 'Main bank account'] as $key => $name) {
+            DB::table('bank_accounts')->insert([
+                'id' => (string) \Illuminate\Support\Str::uuid7(), 'tenant_id' => $company->tenant_id, 'company_id' => $company->id,
+                'account_id' => DB::table('posting_accounts')->where('company_id', $company->id)->where('key', $key)->value('account_id'),
+                'kind' => $key, 'name' => $name, 'is_default' => true, 'status' => 'active', 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
         // Monthly periods for the current calendar year, all open.
         $year = Carbon::now()->year;
         for ($month = 1; $month <= 12; $month++) {

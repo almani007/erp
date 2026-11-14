@@ -35,6 +35,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         'sales.order.view', 'sales.order.manage', 'sales.invoice.create', 'sales.receivable.view',
         'purchasing.bill.manage', 'purchasing.bill.override', 'purchasing.return.create', 'purchasing.payable.view',
         'assets.view', 'assets.manage', 'assets.dispose', 'assets.depreciation.run',
+        'banking.view', 'banking.manage', 'banking.cheque.manage', 'banking.reconcile',
 
         'purchasing.supplier.view', 'purchasing.supplier.manage', 'purchasing.order.view', 'purchasing.order.create',
         'purchasing.order.approve', 'purchasing.receipt.create', 'purchasing.payment.create',
@@ -62,6 +63,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'sales.sale.view', 'sales.customer.view', 'sales.payment.receive', 'sales.receivable.view', 'sales.order.view', 'inventory.stock.view', 'catalog.product.view',
             'purchasing.payable.view', 'purchasing.bill.override', 'purchasing.payment.create',
             'assets.view', 'assets.manage', 'assets.dispose', 'assets.depreciation.run',
+            'banking.view', 'banking.manage', 'banking.cheque.manage', 'banking.reconcile',
             'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.order.approve', 'purchasing.payment.create',
             'identity.audit.view', 'reporting.dashboard.view', 'reporting.analytics.view',
             'people.employee.view', 'people.payroll.approve',
@@ -71,6 +73,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'finance.voucher.create', 'finance.report.view', 'sales.sale.view', 'sales.customer.view', 'sales.payment.receive', 'sales.receivable.view', 'sales.order.view',
             'purchasing.supplier.view', 'purchasing.order.view', 'reporting.dashboard.view',
             'purchasing.bill.manage', 'purchasing.payable.view', 'assets.view', 'assets.manage',
+            'banking.view', 'banking.cheque.manage', 'banking.reconcile',
             'people.employee.view', 'people.payroll.manage',
         ],
         'branch_manager' => [

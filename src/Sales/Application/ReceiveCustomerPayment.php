@@ -38,9 +38,9 @@ final class ReceiveCustomerPayment
     /**
      * @param  array<string, string>|null  $allocations  sale id => amount; null = oldest invoices first
      */
-    public function execute(string $customerId, string $companyId, ?string $branchId, string $method, string $amount, ?string $reference, string $actorId, ?array $allocations = null): CustomerPayment
+    public function execute(string $customerId, string $companyId, ?string $branchId, string $method, string $amount, ?string $reference, string $actorId, ?array $allocations = null, ?string $cashAccountId = null): CustomerPayment
     {
-        return DB::transaction(function () use ($customerId, $companyId, $branchId, $method, $amount, $reference, $actorId, $allocations): CustomerPayment {
+        return DB::transaction(function () use ($customerId, $companyId, $branchId, $method, $amount, $reference, $actorId, $allocations, $cashAccountId): CustomerPayment {
             $customer = Customer::query()->lockForUpdate()->findOrFail($customerId);
             $amount = Decimal::round($amount, 2);
 
@@ -67,7 +67,8 @@ final class ReceiveCustomerPayment
                 sourceId: $payment->id,
                 description: "Receipt {$payment->receipt_no} from {$customer->name}",
                 lines: [
-                    JournalLineDraft::debit($this->accounts->id($companyId, $method === 'cash' ? 'cash' : 'bank'), $amount, $branchId),
+                    // A specific bank account (Banking) or the default cash / bank account.
+                    JournalLineDraft::debit($cashAccountId ?? $this->accounts->id($companyId, $method === 'cash' ? 'cash' : 'bank'), $amount, $branchId),
                     JournalLineDraft::credit($this->accounts->id($companyId, 'accounts_receivable'), $amount, $branchId, null, 'customer', $customer->id),
                 ],
             ));

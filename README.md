@@ -124,6 +124,18 @@ less at the receipt price (the gap to price variance), and an already-billed inv
 drops. Payments are applied to the bills due first, or to the bills chosen. Aging by due date
 (plus goods received but not yet billed) and supplier statements print like customer ones.
 
+### Banking, cheques and reconciliation
+
+Finance → Banking & cheques. Bank accounts and cash boxes each get their own ledger account (the
+default cash and bank accounts are set up automatically). Cheques received and issued —
+post-dated included — are kept in a register: in hand → deposited → cleared or bounced. Nothing
+is posted until a cheque clears; clearing records the customer receipt or supplier payment into
+that bank account and pays off the oldest invoices or bills. Cheques due within 7 days are
+highlighted. Transfers (cash deposited, withdrawn, between banks) post a journal. Bank
+reconciliation ticks the ledger lines on the statement and completes only when the reconciled
+balance equals the statement balance; a statement CSV can be imported to tick matching amounts
+within 5 days automatically, and unmatched statement lines are listed.
+
 ### Fixed assets
 
 Finance → Fixed assets. Categories set the default method (straight line over a life in months,
@@ -194,6 +206,7 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | Production | wired | Recipes / bills of materials with wastage, production orders (plan, complete with actual usage and overheads, cancel), recipe items that consume ingredients on sale |
 | CRM | partial, **not wired** | Unreviewed scaffolding from an earlier pass; no routes, not registered in `bootstrap/providers.php` |
 | People (HR & payroll) | wired | Employees, attendance register, advances and loans, monthly payroll with maker-checker approval, journals, payslips |
+| Banking | wired | Bank and cash accounts, cheque register with post-dated cheques, transfers, bank reconciliation with CSV statement matching |
 | Fixed assets | wired | Asset register, categories, straight-line and reducing-balance depreciation runs with reversal, disposal with gain/loss |
 | Payables | wired | Supplier bills matched to goods receipts with variance tolerance, expense bills, debit notes, payments allocated to bills, aging, statements |
 | Sales documents | wired | Quotations, sales orders, partial invoicing on credit terms, receipts allocated to invoices, aging, statements, A4 printing |
