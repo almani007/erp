@@ -42,12 +42,19 @@ import RestaurantSetupPage from './pages/RestaurantSetupPage';
 import BookingsPage from './pages/BookingsPage';
 import RentalsPage from './pages/RentalsPage';
 import IntegrationsPage from './pages/IntegrationsPage';
+import ApprovalsPage from './pages/ApprovalsPage';
+import StorePage from './pages/StorePage';
 import SaasTenantsPage from './pages/saas/SaasTenantsPage';
 import SaasTemplatesPage from './pages/saas/SaasTemplatesPage';
 
 export default function App() {
     const token = useSession((s) => s.token);
     const isPlatform = useSession((s) => !!s.user?.is_platform_admin);
+
+    // The public online store works with or without a staff login.
+    if (window.location.pathname.startsWith('/store/')) {
+        return <Routes><Route path="/store/:slug" element={<StorePage />} /></Routes>;
+    }
 
     if (!token) {
         return (
@@ -80,6 +87,7 @@ export default function App() {
                 <Route path="/appointments" element={<BookingsPage />} />
                 <Route path="/rentals" element={<RentalsPage />} />
                 <Route path="/integrations" element={<IntegrationsPage />} />
+                <Route path="/approvals" element={<ApprovalsPage />} />
                 <Route path="/records/:typeKey" element={<RecordsPage />} />
                 <Route path="/products" element={<ProductsPage />} />
                 <Route path="/master-data" element={<MasterDataPage />} />

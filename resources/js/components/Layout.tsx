@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import NotificationBell from './NotificationBell';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Button from 'devextreme-react/button';
 import Popup from 'devextreme-react/popup';
@@ -78,6 +79,7 @@ const NAV: { section: string; links: NavLink[] }[] = [
     {
         section: 'Administration', links: [
             { text: 'Business & branches', icon: 'map', path: '/organization' },
+            { text: 'Approvals', icon: 'check', path: '/approvals' },
             { text: 'Integrations', icon: 'link', path: '/integrations', permission: 'integration.manage' },
             { text: 'Restaurant setup', icon: 'preferences', path: '/restaurant-setup', permission: 'restaurant.setup.manage', module: 'restaurant' },
             { text: 'Custom records', icon: 'columnfield', path: '/record-types', permission: 'organization.settings.view', module: 'records' },
@@ -188,6 +190,7 @@ export default function Layout() {
                         stylingMode="outlined"
                         inputAttr={{ 'aria-label': 'Branch' }}
                     />}
+                    {!isPlatform && <NotificationBell />}
                     <div className="erp-user" role="button" tabIndex={0} title="Change password" style={{ cursor: 'pointer' }}
                         onClick={() => setPasswordOpen(true)} onKeyDown={(e) => e.key === 'Enter' && setPasswordOpen(true)}>
                         <div className="erp-avatar">{initials}</div>

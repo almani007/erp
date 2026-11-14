@@ -32,6 +32,13 @@ final class AdvanceController
         $data['amount'] = (string) $data['amount'];
         $data['installment'] = isset($data['installment']) ? (string) $data['installment'] : null;
 
-        return new JsonResponse(['data' => $action->execute(Employee::query()->findOrFail($data['employee_id']), $data)], 201);
+        $employee = Employee::query()->findOrFail($data['employee_id']);
+        $pending = app(\Workflow\Application\Approvals::class)->gate('employee_advance', $data['amount'],
+            ucfirst($data['kind'])." of {$data['amount']} to {$employee->name}", ['employee_id' => $employee->id, 'data' => $data], $employee->branch_id);
+        if ($pending !== null) {
+            return new JsonResponse(['data' => ['status' => 'pending_approval', 'approval_request' => $pending]], 202);
+        }
+
+        return new JsonResponse(['data' => $action->execute($employee, $data)], 201);
     }
 }

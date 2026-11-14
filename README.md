@@ -173,6 +173,28 @@ advances; payment posts salaries payable against cash or bank. Printable payslip
 settings (`payroll.month_days` 30, `payroll.hours_per_day` 8, `payroll.overtime_rate` 1). Income
 tax is entered per employee, not computed from tax slabs; leave balances are not tracked yet.
 
+### Approvals, notifications and the online store
+
+**Approvals** (Approvals in the menu; rules under its Rules tab). A rule names what needs approval —
+supplier payments, stock adjustments (by value at cost), invoices from sales orders, employee
+advances — from which amount, and the roles that approve it in order. A covered action is not
+carried out: it is saved exactly as asked and the screen says "Sent for approval". Each level is
+decided by someone with that role who is not the requester (the owner can approve any level);
+after the last approval the action runs as the requester, or the request shows why it could not
+(stock gone, period closed). Full history per request.
+
+**Notifications.** A bell in the top bar: approvals waiting for your role, decisions on your
+requests, new online orders and bookings, and morning alerts (`workflow:alerts`, 07:40) for low
+stock, batches expiring within 30 days, FBR failures and overdue invoices.
+
+**Online store** (Integrations → Online store). A public page at `/store/<business slug>`: products
+by category with search (stock is shown only as available / out of stock), a cart, checkout for
+delivery or pick-up, and appointment booking from real free slots. Orders become sales orders
+marked "online" for staff to confirm and invoice; customers are matched by phone or added; the
+branch manager is notified and the customer gets a WhatsApp / SMS confirmation when messaging is
+on. Requests are rate-limited and carry a hidden bot trap. Products can be hidden from the store
+and given an image URL.
+
 ### Integrations
 
 Administration → Integrations.
@@ -277,6 +299,8 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | People (HR & payroll) | wired | Employees, attendance register, advances and loans, monthly payroll with maker-checker approval, journals, payslips |
 | Accounting tools | wired | General ledger, monthly / branch P&L, cash flow, budget vs actual, sales tax summary, budgets, recurring journals, year-end close |
 | Banking | wired | Bank and cash accounts, cheque register with post-dated cheques, transfers, bank reconciliation with CSV statement matching |
+| Workflow | wired | Configurable multi-level approvals for payments, adjustments, invoices and advances; in-app notifications and daily alerts |
+| Storefront | wired | Public online store with cart, delivery / pick-up orders and online booking |
 | Integrations | wired | FBR POS and Digital Invoicing with retries, WhatsApp / SMS / email with automatic reminders, signed share links, signed webhooks, API keys, CSV import |
 | Restaurant | wired | Floor plan, dine-in / takeaway / delivery, modifiers, KOT per station, kitchen display, split settlement |
 | Appointments | wired | Resources with working hours, calendar, clash checks, free slots, WhatsApp reminders, billing |

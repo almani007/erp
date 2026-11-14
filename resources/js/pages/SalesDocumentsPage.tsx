@@ -262,8 +262,10 @@ function InvoiceDialog({ order, onClose, onDone }: { order: Doc; onClose: () => 
                 ...(paidNow > 0 ? { paid_now: paidNow, paid_by: paidBy } : {}),
             }, idempotent(key));
             const sale = data.data;
-            notifySuccess(`Invoice ${sale.sale_no} created.`);
-            printInvoice(sale, order, config, branches.find((b) => b.id === order.branch_id)?.name);
+            if (sale.status !== 'pending_approval') {
+                notifySuccess(`Invoice ${sale.sale_no} created.`);
+                printInvoice(sale, order, config, branches.find((b) => b.id === order.branch_id)?.name);
+            }
             onDone();
         } catch (e) {
             notifyError(e);

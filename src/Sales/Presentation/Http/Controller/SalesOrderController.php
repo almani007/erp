@@ -92,6 +92,20 @@ final class SalesOrderController
         $quantities = isset($data['lines']) ? collect($data['lines'])->mapWithKeys(fn ($l) => [$l['line_id'] => (string) $l['quantity']])->all() : null;
         $serials = collect($data['lines'] ?? [])->mapWithKeys(fn ($l) => [$l['line_id'] => $l['serials'] ?? []])->all();
 
+        // Value of what is being invoiced, at the order's prices.
+        $value = 0.0;
+        foreach ($order->lines as $line) {
+            $q = $quantities === null ? (float) $line->quantity - (float) $line->invoiced_quantity : (float) ($quantities[$line->id] ?? 0);
+            $value += $q * (float) $line->line_total / max((float) $line->quantity, 0.000001);
+        }
+        $pending = app(\Workflow\Application\Approvals::class)->gate('sales_invoice', number_format($value, 2, '.', ''),
+            "Invoice {$order->doc_no} to ".($order->customer?->name ?? 'customer'),
+            ['order_id' => $order->id, 'quantities' => $quantities, 'paid_now' => (string) ($data['paid_now'] ?? '0'), 'paid_by' => $data['paid_by'] ?? 'cash', 'serials' => $serials],
+            $order->branch_id);
+        if ($pending !== null) {
+            return new JsonResponse(['data' => ['status' => 'pending_approval', 'approval_request' => $pending]], 202);
+        }
+
         $sale = $action->invoice($order->id, $quantities, (string) ($data['paid_now'] ?? '0'), $data['paid_by'] ?? 'cash', $serials, $request->header('Idempotency-Key'));
 
         return new JsonResponse(['data' => $sale], 201);

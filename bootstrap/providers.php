@@ -25,6 +25,8 @@ return [
     Restaurant\Infrastructure\Provider\RestaurantServiceProvider::class,
     Bookings\Infrastructure\Provider\BookingsServiceProvider::class,
     Rentals\Infrastructure\Provider\RentalsServiceProvider::class,
+    Workflow\Infrastructure\Provider\WorkflowServiceProvider::class,
+    Storefront\Infrastructure\Provider\StorefrontServiceProvider::class,
     Records\Infrastructure\Provider\RecordsServiceProvider::class,
     Saas\Infrastructure\Provider\SaasServiceProvider::class,
 ];

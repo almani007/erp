@@ -88,6 +88,8 @@ final class ManageSalesOrders
             if ($existing === null) {
                 $type = $data['doc_type'];
                 $doc = SalesOrder::query()->create($header + [
+                    'source' => $data['source'] ?? 'staff',
+                    'delivery_address' => $data['delivery_address'] ?? null,
                     'doc_type' => $type,
                     'doc_no' => $this->numbers->next($this->tenant->requireId(), 'sales_'.$type, $warehouse->company_id, $type === SalesOrder::QUOTATION ? 'QT' : 'SO'),
                     'status' => $type === SalesOrder::QUOTATION ? 'draft' : 'open',

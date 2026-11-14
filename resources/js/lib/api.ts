@@ -19,7 +19,13 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        // An approval rule caught the action: it is saved and waits for the approvers.
+        if (response.status === 202 && response.data?.data?.status === 'pending_approval') {
+            notify({ message: 'Sent for approval. It will be carried out once approved — see Approvals.', type: 'warning', displayTime: 5000, position: { at: 'top center', my: 'top center', offset: '0 16' } });
+        }
+        return response;
+    },
     (error: AxiosError) => {
         if (error.response?.status === 401 && useSession.getState().token) {
             useSession.getState().signOut();

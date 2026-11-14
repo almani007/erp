@@ -81,6 +81,7 @@ final class ManageAppointments
             return Appointment::query()->create($fields + [
                 'appointment_no' => $this->numbers->next($this->tenant->requireId(), 'appointment', $resource->branch_id, 'APT'),
                 'status' => 'booked',
+                'source' => $data['source'] ?? 'staff',
                 'created_by' => (string) $this->auth->guard('sanctum')->id(),
             ]);
         });

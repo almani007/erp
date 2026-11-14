@@ -29,6 +29,8 @@ foreach ([
     'Restaurant',
     'Bookings',
     'Rentals',
+    'Workflow',
+    'Storefront',
     'Records',
     'Saas',
 ] as $context) {

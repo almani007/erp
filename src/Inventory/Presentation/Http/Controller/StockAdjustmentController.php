@@ -52,8 +52,21 @@ final class StockAdjustmentController
             'lines.*.expiry_date' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
+        $warehouse = $this->warehouse($data['warehouse_id'], $branches);
+        $costs = \Catalog\Infrastructure\Persistence\Eloquent\Product::query()->whereIn('id', array_column($data['lines'], 'product_id'))->pluck('cost_price', 'id');
+        $value = 0.0;
+        foreach ($data['lines'] as $l) {
+            $value += abs((float) $l['qty_delta']) * (float) ($l['unit_cost'] ?? $costs[$l['product_id']] ?? 0);
+        }
+        $pending = app(\Workflow\Application\Approvals::class)->gate('stock_adjustment', number_format($value, 2, '.', ''),
+            "Stock adjustment ({$data['reason_code']}) in {$warehouse->name}, ".count($data['lines']).' items',
+            ['warehouse_id' => $warehouse->id, 'reason_code' => $data['reason_code'], 'notes' => $data['notes'] ?? null, 'lines' => $data['lines']], $warehouse->branch_id);
+        if ($pending !== null) {
+            return new JsonResponse(['data' => ['status' => 'pending_approval', 'approval_request' => $pending]], 202);
+        }
+
         $adjustment = $action->execute(
-            $this->warehouse($data['warehouse_id'], $branches),
+            $warehouse,
             $data['reason_code'],
             $data['notes'] ?? null,
             $data['lines'],

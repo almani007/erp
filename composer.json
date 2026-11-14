@@ -55,6 +55,7 @@
             "Restaurant\\": "src/Restaurant/",
             "Bookings\\": "src/Bookings/",
             "Rentals\\": "src/Rentals/",
+            "Storefront\\": "src/Storefront/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         }

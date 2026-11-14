@@ -82,6 +82,15 @@ final class SupplierController
             ? collect($data['allocations'])->mapWithKeys(fn (array $a): array => [$a['supplier_bill_id'] => (string) $a['amount']])->all()
             : null;
 
+        $supplier = Supplier::query()->findOrFail($supplierId);
+        $pending = app(\Workflow\Application\Approvals::class)->gate('supplier_payment', (string) $data['amount'],
+            "Pay {$supplier->name} ".number_format((float) $data['amount'], 2)." by {$data['method']}",
+            ['supplier_id' => $supplierId, 'company_id' => $data['company_id'], 'method' => $data['method'], 'amount' => (string) $data['amount'],
+                'reference' => $data['reference'] ?? null, 'allocations' => $allocations]);
+        if ($pending !== null) {
+            return new JsonResponse(['data' => ['status' => 'pending_approval', 'approval_request' => $pending]], 202);
+        }
+
         $payment = $action->execute($supplierId, $data['company_id'], $data['method'], (string) $data['amount'], $data['reference'] ?? null, $request->user()->id, $allocations);
 
         return new JsonResponse(['data' => $payment], 201);

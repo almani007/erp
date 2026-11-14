@@ -34,6 +34,12 @@ Artisan::command('integration:reminders', function (Integration\Application\Auto
     $this->info('Sent '.$messages->daily().' reminders.');
 })->purpose('Send overdue-invoice and appointment reminders');
 Schedule::command('integration:reminders')->dailyAt('18:05')->withoutOverlapping();
+
+// Morning alerts under the bell: low stock, expiring batches, FBR failures, overdue invoices.
+Artisan::command('workflow:alerts', function (Workflow\Application\DailyAlerts $alerts): void {
+    $this->info('Raised '.$alerts->run().' alerts.');
+})->purpose('Raise daily alerts');
+Schedule::command('workflow:alerts')->dailyAt('07:40')->withoutOverlapping();
 Schedule::call(static fn () => DB::table('idempotency_records')->where('expires_at', '<', now())->delete())
     ->daily()
     ->name('prune-idempotency-records');

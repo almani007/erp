@@ -15,7 +15,7 @@ final class SaveProduct
         'sku', 'name', 'product_type', 'base_unit_id', 'category_id', 'brand_id', 'tax_code_id',
         'track_batch', 'track_serial', 'track_expiry', 'sale_price', 'cost_price', 'reorder_level',
         'status', 'description', 'wholesale_price', 'wholesale_min_qty', 'pricing_mode', 'rate_code', 'weight',
-        'making_charge', 'wastage_percent', 'purity', 'warranty_months', 'kitchen_station', 'duration_minutes', 'hs_code',
+        'making_charge', 'wastage_percent', 'purity', 'warranty_months', 'kitchen_station', 'duration_minutes', 'hs_code', 'online', 'image_url',
     ];
 
     /**

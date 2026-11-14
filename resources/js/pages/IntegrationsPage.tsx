@@ -23,6 +23,7 @@ export default function IntegrationsPage() {
                 <Item title="WhatsApp, SMS & email"><Messaging /></Item>
                 <Item title="Webhooks"><Webhooks /></Item>
                 <Item title="API keys"><ApiKeys /></Item>
+                <Item title="Online store"><OnlineStore /></Item>
                 <Item title="Import data"><Import /></Item>
             </TabPanel>
         </Page>
@@ -332,6 +333,38 @@ function Import() {
                     )}
                 </div>
             )}
+        </div>
+    );
+}
+
+// ── Online store ──────────────────────────────────────────────
+
+function OnlineStore() {
+    const branches = useSession((s) => s.branches);
+    const warehouses = useQuery({ queryKey: ['warehouses'], queryFn: () => getList<any>('/warehouses') }).data ?? [];
+    const [s, setS] = useState<any>(null);
+    useEffect(() => { getOne<any>('/storefront/settings').then(setS).catch(notifyError); }, []);
+    const set = (p: any) => setS((x: any) => ({ ...x, ...p }));
+    const save = async () => { try { await api.put('/storefront/settings', s); notifySuccess('Saved.'); } catch (e) { notifyError(e); } };
+    if (!s) return null;
+    const url = `${window.location.origin}/store/${s.slug}`;
+
+    return (
+        <div className="erp-card" style={{ maxWidth: 760 }}>
+            <p>Customers browse your products, order for delivery or pick-up and book appointments at <a href={url} target="_blank" rel="noreferrer">{url}</a>.
+                Orders arrive as sales orders marked "online" for you to confirm and invoice; bookings go on the calendar. Hide a product from the store by turning off "Online" on it.</p>
+            <CheckBox text="Store is open" value={!!s.enabled} onValueChanged={(e) => set({ enabled: e.value })} />
+            <div style={{ marginTop: 6 }}><CheckBox text="Take appointment bookings" value={!!s.booking_enabled} onValueChanged={(e) => set({ booking_enabled: e.value })} /></div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                <Field label="Store name"><TextBox value={s.title ?? ''} onValueChanged={(e) => set({ title: e.value })} /></Field>
+                <Field label="WhatsApp number"><TextBox value={s.whatsapp ?? ''} onValueChanged={(e) => set({ whatsapp: e.value })} /></Field>
+                <Field label="Orders served by branch"><SelectBox dataSource={branches} valueExpr="id" displayExpr="name" value={s.branch_id ?? null} onValueChanged={(e) => set({ branch_id: e.value })} /></Field>
+                <Field label="Stock from warehouse"><SelectBox dataSource={warehouses} valueExpr="id" displayExpr="name" value={s.warehouse_id ?? null} onValueChanged={(e) => set({ warehouse_id: e.value })} /></Field>
+                <Field label="Minimum order (Rs)"><TextBox value={s.min_order ?? ''} onValueChanged={(e) => set({ min_order: e.value || null })} /></Field>
+                <Field label="Delivery charges note"><TextBox value={s.delivery_fee_note ?? ''} placeholder="Free delivery above Rs 3,000 in Gulshan" onValueChanged={(e) => set({ delivery_fee_note: e.value })} /></Field>
+            </div>
+            <Field label="About the store"><TextArea height={70} value={s.about ?? ''} onValueChanged={(e) => set({ about: e.value })} /></Field>
+            <div className="erp-actions"><Button text="Open store" icon="globe" onClick={() => window.open(url, '_blank')} /><Button text="Save" type="default" onClick={save} /></div>
         </div>
     );
 }

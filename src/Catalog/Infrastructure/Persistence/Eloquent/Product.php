@@ -52,6 +52,8 @@ final class Product extends Model
         'kitchen_station',
         'duration_minutes',
         'hs_code',
+        'online',
+        'image_url',
         'reorder_level',
         'status',
         'description',

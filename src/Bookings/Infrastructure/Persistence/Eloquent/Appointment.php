@@ -15,7 +15,7 @@ final class Appointment extends Model
 
     protected $table = 'appointments';
 
-    protected $fillable = ['branch_id', 'resource_id', 'product_id', 'appointment_no', 'customer_id', 'customer_name', 'customer_phone', 'starts_at', 'ends_at', 'status', 'price', 'notes', 'sale_id', 'reminded_at', 'created_by'];
+    protected $fillable = ['branch_id', 'resource_id', 'product_id', 'appointment_no', 'customer_id', 'customer_name', 'customer_phone', 'starts_at', 'ends_at', 'status', 'price', 'notes', 'sale_id', 'reminded_at', 'created_by', 'source'];
 
     protected function casts(): array
     {

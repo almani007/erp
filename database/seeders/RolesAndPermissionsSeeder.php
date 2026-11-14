@@ -40,6 +40,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         'restaurant.order.manage', 'restaurant.kitchen.view', 'restaurant.setup.manage',
         'bookings.manage', 'bookings.setup', 'rentals.manage',
         'integration.manage', 'integration.message.send', 'integration.import',
+        'workflow.rules.manage',
 
         'purchasing.supplier.view', 'purchasing.supplier.manage', 'purchasing.order.view', 'purchasing.order.create',
         'purchasing.order.approve', 'purchasing.receipt.create', 'purchasing.payment.create',

@@ -86,6 +86,8 @@ export default function ProductsPage() {
                 {features.serials && <Column dataField="track_serial" caption="Serial / IMEI" dataType="boolean" width={115} />}
                 {features.serials && <Column dataField="warranty_months" caption="Warranty (months)" dataType="number" width={150} />}
                 <Column dataField="hs_code" caption="HS / PCT code (FBR)" width={150} visible={false} />
+                <Column dataField="online" caption="Online" dataType="boolean" width={90} visible={false} />
+                <Column dataField="image_url" caption="Image URL" visible={false} />
                 {moduleOn('restaurant') && <Column dataField="kitchen_station" caption="Kitchen station" width={140} visible={false} />}
                 {moduleOn('bookings') && <Column dataField="duration_minutes" caption="Service minutes" dataType="number" width={130} visible={false} />}
                 {customColumns(customFields)}

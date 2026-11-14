@@ -25,7 +25,7 @@ final class SalesOrder extends Model
     protected $fillable = [
         'company_id', 'branch_id', 'warehouse_id', 'customer_id', 'doc_type', 'doc_no', 'status', 'doc_date', 'valid_until',
         'delivery_date', 'payment_days', 'price_tier', 'reference', 'notes', 'terms', 'subtotal', 'discount_total', 'tax_total',
-        'grand_total', 'source_id', 'salesperson_id', 'created_by',
+        'grand_total', 'source_id', 'salesperson_id', 'created_by', 'source', 'delivery_address',
     ];
 
     protected function casts(): array
