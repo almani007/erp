@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Purchasing\Presentation\Http\Controller\PurchaseOrderController;
 use Purchasing\Presentation\Http\Controller\SupplierController;
 
-Route::middleware('auth:sanctum')->group(function (): void {
+Route::middleware(['auth:sanctum', 'module:purchasing'])->group(function (): void {
     Route::get('suppliers', [SupplierController::class, 'index'])->middleware('permission:purchasing.supplier.view');
     Route::post('suppliers', [SupplierController::class, 'store'])->middleware('permission:purchasing.supplier.manage');
     Route::put('suppliers/{supplierId}', [SupplierController::class, 'update'])->middleware('permission:purchasing.supplier.manage');

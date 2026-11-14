@@ -8,7 +8,7 @@ use Finance\Presentation\Http\Controller\JournalController;
 use Finance\Presentation\Http\Controller\PeriodController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum')->group(function (): void {
+Route::middleware(['auth:sanctum', 'module:finance'])->group(function (): void {
     Route::get('accounts', [AccountController::class, 'index'])->middleware('permission:finance.account.view');
     Route::post('accounts', [AccountController::class, 'store'])->middleware('permission:finance.account.manage');
     Route::put('accounts/{accountId}', [AccountController::class, 'update'])->middleware('permission:finance.account.manage');

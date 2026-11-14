@@ -39,14 +39,21 @@ export const BUSINESS_TYPES: { id: string; name: string; features: Features }[] 
     { id: 'hardware', name: 'Hardware, sanitary & building material', features: { ...all(false), wholesale: true, packs: true, rates: true } },
     { id: 'cosmetics', name: 'Cosmetics & general store', features: { ...all(false), wholesale: true, variants: true, expiry: true } },
     { id: 'wholesale', name: 'Wholesale & distribution', features: { ...all(false), wholesale: true, packs: true, expiry: true } },
-    { id: 'services', name: 'Services (salon, repair, consultancy)', features: all(false) },
+    { id: 'services', name: 'Services (salon, clinic, workshop, consultancy)', features: all(false) },
+    { id: 'restaurant', name: 'Restaurant, café & bakery', features: { ...all(false), expiry: true } },
+    { id: 'manufacturing', name: 'Small manufacturing & workshop', features: { ...all(false), wholesale: true, packs: true } },
+    { id: 'rental', name: 'Rental & hire', features: { ...all(false), serials: true } },
 ];
+
+export type ModuleName = 'sales' | 'catalog' | 'inventory' | 'purchasing' | 'finance' | 'reporting' | 'records';
 
 export interface AppConfig {
     business_type: string;
     /** Individual switches that override the business type's defaults. */
     features: Partial<Features>;
     loyalty: { earn_per_amount: string; point_value: string; enabled: boolean };
+    /** What the plan includes, set by the platform operator. */
+    entitlements?: { modules: Partial<Record<ModuleName, boolean>>; features: Partial<Features> };
 }
 
 export function presetFeatures(type: string | undefined): Features {
@@ -57,12 +64,14 @@ export function presetFeatures(type: string | undefined): Features {
  * What this business uses. These switches only decide which fields and
  * screens are shown — the server behaves the same whatever they are.
  */
-export function useAppConfig(): { config: AppConfig | undefined; features: Features; refetch: () => void } {
+export function useAppConfig(): { config: AppConfig | undefined; features: Features; moduleOn: (m: ModuleName) => boolean; refetch: () => void } {
     const query = useQuery({ queryKey: ['app-config'], queryFn: () => getOne<AppConfig>('/app-config'), staleTime: 5 * 60_000 });
 
     return {
         config: query.data,
-        features: { ...presetFeatures(query.data?.business_type), ...(query.data?.features ?? {}) },
+        // A feature the plan excludes stays off whatever the business switched on.
+        features: { ...presetFeatures(query.data?.business_type), ...(query.data?.features ?? {}), ...(query.data?.entitlements?.features ?? {}) },
+        moduleOn: (m) => query.data?.entitlements?.modules?.[m] !== false,
         refetch: () => { query.refetch(); },
     };
 }

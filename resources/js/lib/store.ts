@@ -7,6 +7,8 @@ export interface SessionUser {
     email: string;
     tenant_id: string;
     all_branches: boolean;
+    /** Platform operator: manages tenants and business templates. */
+    is_platform_admin?: boolean;
 }
 
 export interface Branch {

@@ -11,6 +11,7 @@ final class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(RolesAndPermissionsSeeder::class);
+        $this->call(PlatformSeeder::class);
 
         // The demo tenant ships with published default passwords, so it is
         // never created in production.

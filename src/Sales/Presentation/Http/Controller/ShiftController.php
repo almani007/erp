@@ -59,6 +59,8 @@ final class ShiftController
             // Per-feature switches that override the business type's defaults.
             'features' => (object) ((array) ($settings->get('business', 'features') ?? [])),
             'loyalty' => $loyalty->config(),
+            // What the plan includes; the menu hides switched-off modules and features.
+            'entitlements' => app(\Saas\Application\Entitlements::class)->summary(),
         ]]);
     }
 

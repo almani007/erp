@@ -7,7 +7,7 @@ use Sales\Presentation\Http\Controller\CustomerController;
 use Sales\Presentation\Http\Controller\SaleController;
 use Sales\Presentation\Http\Controller\ShiftController;
 
-Route::middleware('auth:sanctum')->group(function (): void {
+Route::middleware(['auth:sanctum', 'module:sales'])->group(function (): void {
     $sell = 'permission:sales.sale.create';
 
     Route::get('customers', [CustomerController::class, 'index'])->middleware('permission:sales.customer.view|sales.sale.create');
@@ -20,8 +20,6 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     Route::post('customers/{customerId}/loyalty-adjustments', [CustomerController::class, 'adjustLoyalty'])->middleware('permission:sales.customer.manage');
 
-    // Any signed-in user: the screens need it to decide what to show.
-    Route::get('app-config', [ShiftController::class, 'config']);
     Route::get('pos/terminals', [ShiftController::class, 'terminals'])->middleware($sell);
     Route::post('pos/terminals', [ShiftController::class, 'storeTerminal'])->middleware('permission:sales.shift.manage');
 
@@ -41,3 +39,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('sales/{saleId}/returns', [SaleController::class, 'storeReturn'])->middleware(['permission:sales.return.create', 'idempotent']);
     Route::post('sales/{saleId}/void', [SaleController::class, 'void'])->middleware('permission:sales.sale.void');
 });
+
+// Outside the module gate: every signed-in user needs it to build the menu,
+// even when the sales module is switched off for the tenant.
+Route::middleware('auth:sanctum')->get('app-config', [ShiftController::class, 'config']);

@@ -49,13 +49,39 @@ Always available: services and non-stock items, loose items by weight (decimal q
 branch-wise prices, deals and coupons, loyalty points, customer credit, purchasing, stock
 counts, accounting.
 
-**Where it does not fit yet.** Restaurants and cafés (tables, modifiers, kitchen tickets),
-manufacturing (recipes / bill of materials, production orders), appointment- or job-based
-services (bookings, job cards), rentals, and businesses that need HR and payroll have no
-dedicated module. Within the trades above, still missing: old-gold exchange and stone details
-(jewellery), a size-colour stock matrix view (garments), route / van sales (distribution),
-prescription records (pharmacy), and stock-level serial tracking (serials are captured at
-sale, not at receipt).
+### Shaping the system per business: templates, custom records and plans
+
+Three settings layers let one installation serve businesses the built-in screens were not
+written for — no code change, no new tables:
+
+1. **Custom records** (Administration → Custom records). A business defines its own record
+   kinds — job cards, appointments, table reservations, rental agreements, production batches,
+   prescriptions, tailoring or gold orders — each with its own fields (text, notes, number,
+   amount, date, date-time, yes/no, list of choices), required flags, number prefix, status
+   list and optional link to a customer. Each appears in the menu under **Records** with a
+   searchable, exportable list and a form. Values are checked against the definition on the
+   server; changing a definition never loses saved values.
+2. **Business templates.** A template bundles a business type, feature switches, extra fields
+   on products / customers / suppliers, and record types. Starter templates ship for general,
+   grocery, pharmacy, garments, jewellery, bartan, electronics, hardware, cosmetics, wholesale,
+   restaurant, services (salon / clinic / workshop), manufacturing and rental
+   (`config/business_templates.php`, seeded once). A business applies one itself ("Start from a
+   template"), or the platform operator applies it. Applying only adds what is missing.
+3. **SaaS admin** (sign in as the platform administrator). Lists every business with users,
+   branches and 30-day sales; creates a new business in one step (company, branch, warehouse,
+   POS terminal, owner login, chart of accounts with posting accounts, periods, units, template);
+   sets each plan — which modules (sales, catalog, inventory, purchasing, accounting, reporting,
+   custom records) and features are included, maximum users and branches; suspends and
+   reactivates (suspension signs everyone out). Edits the templates themselves. Plans are
+   enforced by the API (`module:` middleware, user / branch limits), not only by the menu.
+
+**What this does and does not cover.** Custom records capture data and track status; they do
+not run process logic. So a restaurant can take reservations and catering orders and sell
+through the POS, but there is no table plan, modifiers or kitchen display; a workshop can log
+production batches, but materials are not consumed and finished goods are not costed
+automatically; a rental business can track agreements, but rent is not invoiced on a schedule.
+HR and payroll calculation is not built. Also still missing within the retail trades: a
+size-colour stock matrix view, route / van sales, and stock-level serial tracking.
 
 Demo logins (created only when `APP_ENV` is not `production`; change them after first login):
 
@@ -63,6 +89,7 @@ Demo logins (created only when `APP_ENV` is not `production`; change them after 
 |---|---|---|
 | admin@brixelltd.com | `BrixelAdmin2026!` | tenant owner, all branches |
 | cashier@brixelltd.com | `BrixelCashier2026!` | cashier, Head Office only |
+| platform@brixelltd.com | `BrixelPlatform2026!` | SaaS platform administrator (set `ERP_PLATFORM_ADMIN_PASSWORD` in production) |
 
 The demo tenant has one example per trade (a kurta in six size/colour variants, a 22K gold ring priced
 from the gold rate, steel bartan by weight, cola by the carton, sugar with a wholesale price, a medicine
@@ -91,8 +118,10 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | Sales | wired | Customers, credit limits and account payments, terminals, shifts with cash reconciliation and cash in/out, POS sale with deals and coupons, retail / wholesale tier, selling in packs, loyalty points (earn and redeem), hold/resume, void, partial returns and refunds, price checker |
 | Purchasing | wired | Suppliers, purchase orders with maker-checker approval, full or partial goods receipts into stock, supplier payments, reorder suggestions that raise a draft order |
 | Reporting | wired | Dashboard; drag-and-drop pivot analysis of sales by branch, cashier, category, product, customer, tier, day and hour |
+| Records | wired | Tenant-defined record types (fields, numbering, statuses, customer link) and a generic list / form for each |
+| SaaS | wired | Platform admin: provision businesses, plans (modules, features, user and branch limits), suspend / reactivate, business templates |
 | Production, CRM | partial, **not wired** | Unreviewed scaffolding from an earlier pass; no routes, not registered in `bootstrap/providers.php` |
-| People, Payroll, Order management, Delivery, Workflow, SaaS admin, offline POS sync | not started | — |
+| People, Payroll, Order management, Delivery, Workflow, billing for SaaS plans, offline POS sync | not started | — |
 
 Known gaps inside the wired modules: supplier-invoice matching (the liability is booked at
 receipt, at order prices), supplier advances and purchase returns, buy-X-get-Y and stacked

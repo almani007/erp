@@ -26,9 +26,14 @@ import ReorderPage from './pages/ReorderPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import ExpiryPage from './pages/ExpiryPage';
 import SerialLookupPage from './pages/SerialLookupPage';
+import RecordTypesPage from './pages/RecordTypesPage';
+import RecordsPage from './pages/RecordsPage';
+import SaasTenantsPage from './pages/saas/SaasTenantsPage';
+import SaasTemplatesPage from './pages/saas/SaasTemplatesPage';
 
 export default function App() {
     const token = useSession((s) => s.token);
+    const isPlatform = useSession((s) => !!s.user?.is_platform_admin);
 
     if (!token) {
         return (
@@ -43,7 +48,11 @@ export default function App() {
         <Routes>
             <Route path="/pos" element={<PosPage />} />
             <Route element={<Layout />}>
-                <Route path="/" element={<DashboardPage />} />
+                <Route path="/" element={isPlatform ? <Navigate to="/saas/tenants" replace /> : <DashboardPage />} />
+                <Route path="/saas/tenants" element={<SaasTenantsPage />} />
+                <Route path="/saas/templates" element={<SaasTemplatesPage />} />
+                <Route path="/record-types" element={<RecordTypesPage />} />
+                <Route path="/records/:typeKey" element={<RecordsPage />} />
                 <Route path="/products" element={<ProductsPage />} />
                 <Route path="/master-data" element={<MasterDataPage />} />
                 <Route path="/stock" element={<StockPage />} />

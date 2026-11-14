@@ -5,7 +5,7 @@ import Popup from 'devextreme-react/popup';
 import SelectBox from 'devextreme-react/select-box';
 import TextBox from 'devextreme-react/text-box';
 import { api, getList, notifyError, notifySuccess } from '../lib/api';
-import { Features, useAppConfig } from '../lib/config';
+import { Features, ModuleName, useAppConfig } from '../lib/config';
 import { Branch, useSession } from '../lib/store';
 
 interface NavLink {
@@ -15,53 +15,58 @@ interface NavLink {
     permission?: string;
     /** Only shown when this business feature is switched on. */
     feature?: keyof Features;
+    /** Hidden when the tenant's plan does not include the module. */
+    module?: ModuleName;
 }
+
+interface RecordTypeLink { key: string; plural: string; status: string }
 
 const NAV: { section: string; links: NavLink[] }[] = [
     {
         section: 'Overview', links: [
-            { text: 'Dashboard', icon: 'home', path: '/', permission: 'reporting.dashboard.view' },
-            { text: 'Sales analysis', icon: 'datausage', path: '/analytics', permission: 'reporting.analytics.view' },
+            { text: 'Dashboard', icon: 'home', path: '/', permission: 'reporting.dashboard.view', module: 'reporting' },
+            { text: 'Sales analysis', icon: 'datausage', path: '/analytics', permission: 'reporting.analytics.view', module: 'reporting' },
         ],
     },
     {
         section: 'Selling', links: [
-            { text: 'Point of Sale', icon: 'cart', path: '/pos', permission: 'sales.sale.create' },
-            { text: 'Sales & returns', icon: 'money', path: '/sales', permission: 'sales.sale.view' },
-            { text: 'Customers', icon: 'group', path: '/customers', permission: 'sales.customer.view' },
-            { text: 'Price checker', icon: 'search', path: '/price-checker', permission: 'catalog.product.view' },
-            { text: 'Serial & warranty', icon: 'tags', path: '/serials', permission: 'sales.sale.view', feature: 'serials' },
+            { text: 'Point of Sale', icon: 'cart', path: '/pos', permission: 'sales.sale.create', module: 'sales' },
+            { text: 'Sales & returns', icon: 'money', path: '/sales', permission: 'sales.sale.view', module: 'sales' },
+            { text: 'Customers', icon: 'group', path: '/customers', permission: 'sales.customer.view', module: 'sales' },
+            { text: 'Price checker', icon: 'search', path: '/price-checker', permission: 'catalog.product.view', module: 'catalog' },
+            { text: 'Serial & warranty', icon: 'tags', path: '/serials', permission: 'sales.sale.view', feature: 'serials', module: 'sales' },
         ],
     },
     {
         section: 'Catalog', links: [
-            { text: 'Products', icon: 'product', path: '/products', permission: 'catalog.product.view' },
-            { text: 'Pricing & deals', icon: 'percent', path: '/pricing', permission: 'catalog.product.view' },
-            { text: 'Categories, units & tax', icon: 'hierarchy', path: '/master-data', permission: 'catalog.product.view' },
+            { text: 'Products', icon: 'product', path: '/products', permission: 'catalog.product.view', module: 'catalog' },
+            { text: 'Pricing & deals', icon: 'percent', path: '/pricing', permission: 'catalog.product.view', module: 'catalog' },
+            { text: 'Categories, units & tax', icon: 'hierarchy', path: '/master-data', permission: 'catalog.product.view', module: 'catalog' },
         ],
     },
     {
         section: 'Supply chain', links: [
-            { text: 'Purchase orders', icon: 'orderedlist', path: '/purchase-orders', permission: 'purchasing.order.view' },
-            { text: 'Reorder suggestions', icon: 'bell', path: '/reorder', permission: 'purchasing.order.view' },
-            { text: 'Suppliers', icon: 'user', path: '/suppliers', permission: 'purchasing.supplier.view' },
-            { text: 'Stock on hand', icon: 'box', path: '/stock', permission: 'inventory.stock.view' },
-            { text: 'Adjustments', icon: 'edit', path: '/stock-adjustments', permission: 'inventory.stock.view' },
-            { text: 'Transfers', icon: 'movetofolder', path: '/stock-transfers', permission: 'inventory.stock.view' },
-            { text: 'Stock counts', icon: 'checklist', path: '/stock-counts', permission: 'inventory.stock.view' },
-            { text: 'Batches & expiry', icon: 'event', path: '/expiry', permission: 'inventory.stock.view', feature: 'expiry' },
+            { text: 'Purchase orders', icon: 'orderedlist', path: '/purchase-orders', permission: 'purchasing.order.view', module: 'purchasing' },
+            { text: 'Reorder suggestions', icon: 'bell', path: '/reorder', permission: 'purchasing.order.view', module: 'purchasing' },
+            { text: 'Suppliers', icon: 'user', path: '/suppliers', permission: 'purchasing.supplier.view', module: 'purchasing' },
+            { text: 'Stock on hand', icon: 'box', path: '/stock', permission: 'inventory.stock.view', module: 'inventory' },
+            { text: 'Adjustments', icon: 'edit', path: '/stock-adjustments', permission: 'inventory.stock.view', module: 'inventory' },
+            { text: 'Transfers', icon: 'movetofolder', path: '/stock-transfers', permission: 'inventory.stock.view', module: 'inventory' },
+            { text: 'Stock counts', icon: 'checklist', path: '/stock-counts', permission: 'inventory.stock.view', module: 'inventory' },
+            { text: 'Batches & expiry', icon: 'event', path: '/expiry', permission: 'inventory.stock.view', feature: 'expiry', module: 'inventory' },
         ],
     },
     {
         section: 'Finance', links: [
-            { text: 'Chart of accounts', icon: 'bulletlist', path: '/accounts', permission: 'finance.account.view' },
-            { text: 'Journal entries', icon: 'textdocument', path: '/journals', permission: 'finance.journal.view' },
-            { text: 'Financial reports', icon: 'chart', path: '/reports', permission: 'finance.report.view' },
+            { text: 'Chart of accounts', icon: 'bulletlist', path: '/accounts', permission: 'finance.account.view', module: 'finance' },
+            { text: 'Journal entries', icon: 'textdocument', path: '/journals', permission: 'finance.journal.view', module: 'finance' },
+            { text: 'Financial reports', icon: 'chart', path: '/reports', permission: 'finance.report.view', module: 'finance' },
         ],
     },
     {
         section: 'Administration', links: [
             { text: 'Business & branches', icon: 'map', path: '/organization' },
+            { text: 'Custom records', icon: 'columnfield', path: '/record-types', permission: 'organization.settings.view', module: 'records' },
             { text: 'Users & roles', icon: 'key', path: '/users', permission: 'identity.user.view' },
             { text: 'Audit log', icon: 'clock', path: '/audit-log', permission: 'identity.audit.view' },
         ],
@@ -76,22 +81,44 @@ export default function Layout() {
     const { user, roles, permissions, branches, activeBranchId, setBranches, setActiveBranch, signOut } = useSession();
     const [collapsed, setCollapsed] = useState(() => localStorage.getItem('erp-nav-collapsed') === '1');
     const [passwordOpen, setPasswordOpen] = useState(false);
-    const { features } = useAppConfig();
+    const { features, moduleOn, config } = useAppConfig();
+    const isPlatform = !!user?.is_platform_admin;
+    const [recordTypes, setRecordTypes] = useState<RecordTypeLink[]>([]);
 
     useEffect(() => {
+        if (isPlatform) return;
         getList<Branch>('/branches').then(setBranches).catch(notifyError);
-    }, [setBranches]);
+    }, [setBranches, isPlatform]);
+
+    // Each record type the business defined gets its own menu entry.
+    useEffect(() => {
+        if (isPlatform || !config || !moduleOn('records')) return;
+        const load = () => getList<RecordTypeLink>('/record-types').then(setRecordTypes).catch(() => setRecordTypes([]));
+        load();
+        window.addEventListener('erp-record-types-changed', load);
+        return () => window.removeEventListener('erp-record-types-changed', load);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isPlatform, !!config]);
 
     useEffect(() => {
         localStorage.setItem('erp-nav-collapsed', collapsed ? '1' : '0');
     }, [collapsed]);
 
     const sections = useMemo(() => {
+        if (isPlatform) {
+            return [{ section: 'Platform', links: [
+                { text: 'Businesses (tenants)', icon: 'home', path: '/saas/tenants' },
+                { text: 'Business templates', icon: 'copy', path: '/saas/templates' },
+            ] }];
+        }
         const allowed = (link: NavLink) => (!link.permission || permissions.includes('*') || permissions.includes(link.permission))
-            && (!link.feature || features[link.feature]);
-        return NAV.map((s) => ({ ...s, links: s.links.filter(allowed) })).filter((s) => s.links.length > 0);
+            && (!link.feature || features[link.feature]) && (!link.module || moduleOn(link.module));
+        const records: NavLink[] = recordTypes.filter((t) => t.status === 'active')
+            .map((t) => ({ text: t.plural, icon: 'doc', path: `/records/${t.key}`, permission: 'records.view', module: 'records' }));
+        const nav = records.length > 0 ? [...NAV.slice(0, 2), { section: 'Records', links: records }, ...NAV.slice(2)] : NAV;
+        return nav.map((s) => ({ ...s, links: s.links.filter(allowed) })).filter((s) => s.links.length > 0);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [permissions, JSON.stringify(features)]);
+    }, [permissions, JSON.stringify(features), JSON.stringify(config?.entitlements), recordTypes, isPlatform]);
 
     const logout = async () => {
         try {
@@ -137,7 +164,7 @@ export default function Layout() {
                 <header className="erp-topbar">
                     <Button icon="menu" stylingMode="text" hint={collapsed ? 'Expand menu' : 'Collapse menu'} onClick={() => setCollapsed((v) => !v)} />
                     <div className="erp-topbar-spacer" />
-                    <SelectBox
+                    {!isPlatform && <SelectBox
                         width={220}
                         dataSource={branchOptions}
                         valueExpr="id"
@@ -146,13 +173,13 @@ export default function Layout() {
                         onValueChanged={(e) => setActiveBranch(e.value === ALL_BRANCHES ? null : e.value)}
                         stylingMode="outlined"
                         inputAttr={{ 'aria-label': 'Branch' }}
-                    />
+                    />}
                     <div className="erp-user" role="button" tabIndex={0} title="Change password" style={{ cursor: 'pointer' }}
                         onClick={() => setPasswordOpen(true)} onKeyDown={(e) => e.key === 'Enter' && setPasswordOpen(true)}>
                         <div className="erp-avatar">{initials}</div>
                         <div>
                             <div className="erp-user-name">{user?.name}</div>
-                            <div className="erp-user-role">{(roles[0] ?? 'user').replace(/_/g, ' ')}</div>
+                            <div className="erp-user-role">{isPlatform ? 'platform admin' : (roles[0] ?? 'user').replace(/_/g, ' ')}</div>
                         </div>
                     </div>
                     <Button icon="runner" stylingMode="text" hint="Sign out" onClick={logout} />

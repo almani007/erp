@@ -91,6 +91,7 @@ final class AuthController
                 'email' => $user->email,
                 'tenant_id' => $user->tenant_id,
                 'all_branches' => $user->all_branches,
+                'is_platform_admin' => (bool) $user->getAttribute('is_platform_admin'),
             ],
             'roles' => $user->getRoleNames()->values(),
             // "*" tells the client every permission is held; the server still checks each request.

@@ -8,7 +8,7 @@ use Inventory\Presentation\Http\Controller\StockController;
 use Inventory\Presentation\Http\Controller\StockCountController;
 use Inventory\Presentation\Http\Controller\StockTransferController;
 
-Route::middleware('auth:sanctum')->group(function (): void {
+Route::middleware(['auth:sanctum', 'module:inventory'])->group(function (): void {
     $view = 'permission:inventory.stock.view';
 
     Route::get('inventory/balances', [StockController::class, 'balances'])->middleware($view);

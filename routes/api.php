@@ -22,6 +22,8 @@ foreach ([
     'Purchasing',
     'Reporting',
     'Integration',
+    'Records',
+    'Saas',
 ] as $context) {
     $path = dirname(__DIR__).'/src/'.$context.'/Presentation/Routes/api.php';
 

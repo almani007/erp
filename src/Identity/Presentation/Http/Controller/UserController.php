@@ -35,6 +35,7 @@ final class UserController
             'name' => ['required', 'string', 'max:150'],
         ]);
         $this->guardOwnerRole($request, $v['roles'] ?? []);
+        app(\Saas\Application\Entitlements::class)->assertWithinLimit('max_users', User::query()->inCurrentTenant()->count(), 'users');
 
         $user = DB::transaction(function () use ($v, $tenant, $audit): User {
             $user = new User([

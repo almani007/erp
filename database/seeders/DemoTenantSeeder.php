@@ -15,11 +15,8 @@ use Catalog\Infrastructure\Persistence\Eloquent\PromotionItem;
 use Catalog\Infrastructure\Persistence\Eloquent\PromotionRule;
 use Catalog\Infrastructure\Persistence\Eloquent\TaxCode;
 use Catalog\Infrastructure\Persistence\Eloquent\Unit;
-use Finance\Infrastructure\Persistence\Eloquent\Account;
-use Finance\Infrastructure\Persistence\Eloquent\AccountingPeriod;
 use Identity\Infrastructure\Persistence\Eloquent\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inventory\Application\PostStockAdjustment;
@@ -29,6 +26,7 @@ use Organization\Infrastructure\Persistence\Eloquent\CustomField;
 use Organization\Infrastructure\Persistence\Eloquent\Tenant;
 use Organization\Infrastructure\Persistence\Eloquent\Warehouse;
 use Purchasing\Infrastructure\Persistence\Eloquent\Supplier;
+use Saas\Application\ProvisionTenant;
 use Sales\Infrastructure\Persistence\Eloquent\Customer;
 use Sales\Infrastructure\Persistence\Eloquent\PosTerminal;
 use Shared\Domain\Contract\Settings;
@@ -198,60 +196,8 @@ final class DemoTenantSeeder extends Seeder
 
     private function finance(Company $company): void
     {
-        $chart = [
-            ['1010', 'Cash in Hand', 'asset', 'cash'],
-            ['1020', 'Bank Accounts', 'asset', 'bank'],
-            ['1100', 'Accounts Receivable', 'asset', 'accounts_receivable'],
-            ['1200', 'Inventory', 'asset', 'inventory'],
-            ['1300', 'Input Tax Receivable', 'asset', 'purchase_tax_receivable'],
-            ['1500', 'Fixed Assets', 'asset', null],
-            ['2010', 'Accounts Payable', 'liability', 'accounts_payable'],
-            ['2100', 'Sales Tax Payable', 'liability', 'sales_tax_payable'],
-            ['2200', 'Accrued Liabilities', 'liability', null],
-            ['3010', "Owner's Capital", 'equity', null],
-            ['3020', 'Retained Earnings', 'equity', null],
-            ['3900', 'Opening Balance Equity', 'equity', 'opening_balance_equity'],
-            ['4010', 'Sales Revenue', 'revenue', 'sales_revenue'],
-            ['4900', 'Other Income', 'revenue', null],
-            ['5010', 'Cost of Goods Sold', 'expense', 'cost_of_goods_sold'],
-            ['5100', 'Inventory Adjustments', 'expense', 'inventory_adjustment'],
-            ['5110', 'Cash Over / Short', 'expense', 'cash_over_short'],
-            ['5120', 'Loyalty Redemptions', 'expense', 'loyalty_redemption'],
-            ['5200', 'Salaries & Wages', 'expense', null],
-            ['5300', 'Rent', 'expense', null],
-            ['5400', 'Utilities', 'expense', null],
-        ];
-
-        foreach ($chart as [$code, $name, $type, $postingKey]) {
-            $account = Account::query()->create([
-                'company_id' => $company->id,
-                'code' => $code,
-                'name' => $name,
-                'account_type' => $type,
-                'is_control_account' => in_array($postingKey, ['accounts_receivable', 'accounts_payable'], true),
-                'is_system' => $postingKey !== null,
-                'status' => 'active',
-            ]);
-
-            if ($postingKey !== null) {
-                DB::table('posting_accounts')->insert([
-                    'tenant_id' => $company->tenant_id, 'company_id' => $company->id, 'key' => $postingKey, 'account_id' => $account->id,
-                ]);
-            }
-        }
-
-        // Monthly periods for the current calendar year, all open.
-        $year = Carbon::now()->year;
-        for ($month = 1; $month <= 12; $month++) {
-            $start = Carbon::create($year, $month, 1);
-            AccountingPeriod::query()->create([
-                'company_id' => $company->id,
-                'name' => $start->format('M Y'),
-                'start_date' => $start->toDateString(),
-                'end_date' => $start->copy()->endOfMonth()->toDateString(),
-                'status' => 'open',
-            ]);
-        }
+        // Same starter chart, posting accounts and periods every provisioned tenant gets.
+        app(ProvisionTenant::class)->chartOfAccounts($company);
     }
 
     /** @return list<Product> */

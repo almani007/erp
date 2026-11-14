@@ -41,6 +41,8 @@ final class RolesAndPermissionsSeeder extends Seeder
         'finance.period.manage', 'finance.report.view', 'finance.voucher.create',
 
         'reporting.dashboard.view', 'reporting.analytics.view',
+
+        'records.view', 'records.manage',
     ];
 
     /** `tenant_owner` is granted everything through Gate::before, not listed grants. */
@@ -64,7 +66,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'sales.sale.view', 'sales.sale.create', 'sales.sale.void', 'sales.price.override', 'sales.return.create',
             'sales.shift.manage', 'sales.customer.view', 'sales.customer.manage',
             'purchasing.supplier.view', 'purchasing.order.view', 'purchasing.order.create', 'purchasing.receipt.create',
-            'reporting.dashboard.view', 'reporting.analytics.view',
+            'reporting.dashboard.view', 'reporting.analytics.view', 'records.view', 'records.manage',
         ],
         'inventory_controller' => [
             'catalog.product.view', 'inventory.stock.view', 'inventory.adjustment.create', 'inventory.transfer.manage',
@@ -75,7 +77,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'purchasing.order.view', 'purchasing.order.create', 'purchasing.order.approve', 'purchasing.receipt.create',
         ],
         'cashier' => [
-            'catalog.product.view', 'sales.sale.create', 'sales.customer.view',
+            'catalog.product.view', 'sales.sale.create', 'sales.customer.view', 'records.view', 'records.manage',
         ],
         'auditor' => [
             'organization.company.view', 'identity.user.view', 'identity.audit.view', 'catalog.product.view',

@@ -9,7 +9,7 @@ use Catalog\Presentation\Http\Controller\ProductController;
 use Catalog\Presentation\Http\Controller\TradeController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum')->group(function (): void {
+Route::middleware(['auth:sanctum', 'module:catalog'])->group(function (): void {
     $view = 'permission:catalog.product.view';
     $manage = 'permission:catalog.product.manage';
     $master = 'permission:catalog.master.manage';

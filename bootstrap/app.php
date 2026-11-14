@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => RequiresPermission::class,
             'idempotent' => Idempotent::class,
+            'module' => \Saas\Presentation\Http\Middleware\EnsureModuleEnabled::class,
+            'platform' => \Saas\Presentation\Http\Middleware\PlatformAdmin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

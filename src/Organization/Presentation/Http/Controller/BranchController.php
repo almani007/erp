@@ -36,6 +36,8 @@ final class BranchController
 
     public function store(Request $request, CreateBranch $action): JsonResponse
     {
+        app(\Saas\Application\Entitlements::class)->assertWithinLimit('max_branches', \Organization\Infrastructure\Persistence\Eloquent\Branch::query()->count(), 'branches');
+
         $validated = $request->validate([
             'company_id' => ['required', 'uuid', TenantRule::exists('companies')],
             'code' => [

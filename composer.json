@@ -49,6 +49,7 @@
             "Delivery\\": "src/Delivery/",
             "Payroll\\": "src/Payroll/",
             "Saas\\": "src/Saas/",
+            "Records\\": "src/Records/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         }
