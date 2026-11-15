@@ -170,8 +170,14 @@ monthly payroll that calculates from all of these. Lines can be adjusted (absent
 bonus, tax, other deductions, advance recovery) before approval; approval needs a second person
 (the owner excepted) and posts salaries expense against salaries payable, deductions payable and
 advances; payment posts salaries payable against cash or bank. Printable payslips. The rules are
-settings (`payroll.month_days` 30, `payroll.hours_per_day` 8, `payroll.overtime_rate` 1). Income
-tax is entered per employee, not computed from tax slabs.
+settings (`payroll.month_days` 30, `payroll.hours_per_day` 8, `payroll.overtime_rate` 1).
+
+**Income tax.** Each employee is taxed from the tax slabs, by a fixed monthly amount, or not at all.
+The slabs are under HR & payroll → Tax slabs (defaults: Pakistan's salaried slabs for tax year
+2025-26, with the 9 % surcharge above 10 million — **check them against the current Finance Act
+every July**). Monthly withholding uses the year-to-date method: pay already run this tax year
+plus this month for each month left, tax on that, less tax already withheld, spread over the months
+left — so raises and bonuses even out by year end. A calculator checks any salary.
 
 **Leave** (Finance → Leave). Leave types with a yearly allowance (fixed days, or each employee's
 own annual leave days), carry-forward limits, half days, and paid or unpaid. New businesses start
@@ -205,6 +211,34 @@ marked "online" for staff to confirm and invoice; customers are matched by phone
 branch manager is notified and the customer gets a WhatsApp / SMS confirmation when messaging is
 on. Requests are rate-limited and carry a hidden bot trap. Products can be hidden from the store
 and given an image URL.
+
+### Stock reservations and deliveries
+
+**Reservations.** An open sales order holds its stock in its warehouse (setting
+`sales.reserve_stock_for_orders`, on unless set to false). Held stock cannot be sold at the till
+or used elsewhere; invoicing the order uses its own hold; cancelling or editing gives it back, and
+a voided invoice holds the goods again. If less is free than ordered, the order is saved, the rest
+is not held, and the screen says which lines are short. The order screen shows free stock as you
+type, the stock screen shows reserved quantities, and `GET /inventory/reservations` lists which
+orders hold a product.
+
+**Deliveries** (Selling → Deliveries). A delivery note (challan) is made from an invoice number —
+all of it or part, so one invoice can go in several trips — with the address, the date and the
+rider (a staff member or any name) and vehicle. It prints on A4 with signature lines. The rider
+marks it delivered with the receiver's name, a signature drawn on the phone, and any cash
+collected, which is recorded as a customer receipt against that invoice; or "not delivered" with a
+reason, ready to send again. Stock already left on the invoice. A "driver" role sees only deliveries.
+
+### Offline till
+
+If the connection drops while the POS is open, the till keeps working: totals are estimated from
+list prices and tax, cash sales are saved on the device and sent automatically (oldest first, with
+the time they were rung up) when the connection returns. Each keeps its idempotency key, so nothing
+is recorded twice. The server prices each sale again; if it refuses one (for example the cash no
+longer covers a changed price), the sale stays on the till marked "needs attention" to retry or,
+for a manager, discard. Card, gift card and credit payments need the connection, and the shift
+cannot be closed while sales are waiting. The POS must already be open — the app cannot be loaded
+from scratch without a connection.
 
 ### Gift cards and vouchers
 
@@ -346,7 +380,10 @@ some issues on the first `./setup.sh` run, and run the test suite before relying
 | Gift cards | wired | Sold or promotional cards and vouchers, redemption at the till, store credit on returns, blocking, expiry with breakage |
 | Currencies | wired | Currencies and dated rates, foreign-currency supplier bills and payments, realised exchange gain/loss, month-end revaluation with automatic reversal |
 | Sales documents | wired | Quotations, sales orders, partial invoicing on credit terms, receipts allocated to invoices, aging, statements, A4 printing |
-| Order management (delivery notes, stock reservation), Delivery, Workflow, billing for SaaS plans, offline POS sync | not started | — |
+| Deliveries | wired | Delivery notes from invoices (part deliveries), riders, A4 challan, proof of delivery with signature, cash on delivery as receipts |
+| Reservations | wired | Open sales orders hold stock; free-stock check on orders; held stock cannot be sold elsewhere |
+| Offline POS | wired | Cash sales queued on the device while offline and sent with their original time and idempotency key |
+| Billing for SaaS plans, foreign-currency customer invoices, installable offline app (service worker) | not started | — |
 
 Known gaps inside the wired modules: supplier advances (paying before goods arrive), buy-X-get-Y and stacked
 deals, partial transfer receipts, inter-company

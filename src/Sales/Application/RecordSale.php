@@ -64,8 +64,9 @@ final class RecordSale
         ?string $idempotencyKey,
         ?string $couponCode = null,
         ?string $priceTier = null,
+        ?string $soldAt = null,
     ): Sale {
-        return DB::transaction(function () use ($cashierId, $lines, $tenders, $customerId, $mayOverridePrice, $idempotencyKey, $couponCode, $priceTier): Sale {
+        return DB::transaction(function () use ($cashierId, $lines, $tenders, $customerId, $mayOverridePrice, $idempotencyKey, $couponCode, $priceTier, $soldAt): Sale {
             // Locking the shift serialises this cashier's sales with closing the shift.
             $shift = PosShift::query()->where('cashier_id', $cashierId)->where('status', 'open')->lockForUpdate()->first()
                 ?? throw ShiftNotOpen::forCashier();
@@ -74,6 +75,7 @@ final class RecordSale
             $origin = new SaleOrigin(
                 companyId: $shift->company_id, branchId: $shift->branch_id, warehouseId: $terminal->warehouse_id,
                 userId: $cashierId, channel: SaleOrigin::POS, terminalId: $terminal->id, shiftId: $shift->id,
+                soldAt: $soldAt !== null && \Carbon\CarbonImmutable::parse($soldAt)->gte($shift->opened_at) ? $soldAt : null,
             );
             $priced = $this->cart->price($lines, $mayOverridePrice, $shift->branch_id, $couponCode, $customerId, $priceTier);
 
@@ -163,7 +165,7 @@ final class RecordSale
             'idempotency_key' => $idempotencyKey,
             'coupon_code' => $priced['coupon']?->code,
             'price_tier' => $priced['price_tier'],
-            'sold_at' => now(),
+            'sold_at' => $origin->soldAt ?? now(),
         ]);
 
         $this->redeemCoupon($priced['coupon']?->id);

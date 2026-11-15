@@ -77,6 +77,7 @@ final class EmployeeController
             'deductions.*.name' => ['required', 'string', 'max:60'],
             'deductions.*.amount' => ['required', 'numeric', 'min:0'],
             'monthly_tax' => ['nullable', 'numeric', 'min:0', 'decimal:0,2'],
+            'tax_method' => ['sometimes', 'in:fixed,slabs,none'],
             'annual_leave_days' => ['nullable', 'numeric', 'min:0', 'max:365'],
             'bank_name' => ['nullable', 'string', 'max:100'],
             'bank_account' => ['nullable', 'string', 'max:60'],

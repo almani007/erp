@@ -12,6 +12,8 @@ Route::middleware(['auth:sanctum', 'module:inventory'])->group(function (): void
     $view = 'permission:inventory.stock.view';
 
     Route::get('inventory/balances', [StockController::class, 'balances'])->middleware($view);
+    Route::get('stock-availability', [StockController::class, 'availability'])->middleware('permission:inventory.stock.view|sales.order.manage');
+    Route::get('inventory/reservations', [StockController::class, 'reservations'])->middleware($view);
     Route::get('inventory/movements', [StockController::class, 'movements'])->middleware($view);
     Route::get('inventory/lots', [StockController::class, 'lots'])->middleware($view);
 

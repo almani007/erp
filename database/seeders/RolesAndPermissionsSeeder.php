@@ -58,7 +58,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         'people.employee.view', 'people.employee.manage', 'people.attendance.manage',
         'people.payroll.manage', 'people.payroll.approve',
         'people.leave.request', 'people.leave.manage', 'people.leave.approve',
-        'sales.giftcard.manage', 'sales.giftcard.promote',
+        'sales.giftcard.manage', 'sales.giftcard.promote', 'sales.delivery.manage',
         'finance.currency.manage', 'finance.fx.revalue',
     ];
 
@@ -88,6 +88,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'people.employee.view', 'people.payroll.manage',
         ],
         'branch_manager' => [
+            'sales.delivery.manage',
             'people.leave.request', 'people.leave.approve', 'people.leave.manage', 'sales.giftcard.manage', 'sales.giftcard.promote',
             'integration.message.send', 'integration.import',
             'restaurant.order.manage', 'restaurant.kitchen.view', 'restaurant.setup.manage', 'bookings.manage', 'bookings.setup', 'rentals.manage',
@@ -121,6 +122,8 @@ final class RolesAndPermissionsSeeder extends Seeder
         'waiter' => ['catalog.product.view', 'restaurant.order.manage', 'people.leave.request'],
         // Kitchen display only.
         'kitchen' => ['restaurant.kitchen.view', 'people.leave.request'],
+        // Delivery riders: their delivery list, mark delivered with signature and cash collected.
+        'driver' => ['sales.delivery.manage', 'people.leave.request'],
         'auditor' => [
             'organization.company.view', 'identity.user.view', 'identity.audit.view', 'catalog.product.view',
             'inventory.stock.view', 'sales.sale.view', 'sales.customer.view', 'finance.account.view',

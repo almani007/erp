@@ -27,6 +27,7 @@ final readonly class SaleOrigin
         public ?string $salesOrderId = null,
         public ?string $reference = null,
         public ?string $notes = null,
+        public ?string $soldAt = null, // when the till was offline: the time the sale really happened
     ) {}
 
     public function isPos(): bool

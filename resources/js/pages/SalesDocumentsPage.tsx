@@ -124,6 +124,14 @@ function DocEditor({ type, doc, onClose, onChanged }: { type: DocType; doc: Doc 
     const set = (patch: Partial<typeof h>) => setH((x) => ({ ...x, ...patch }));
     const customer = customers.find((c) => c.id === h.customer_id);
 
+    // Free stock (on hand less what other orders hold) in the chosen warehouse, for the lines being typed.
+    const productIds = [...new Set(lines.map((l) => l.product_id).filter(Boolean))].sort();
+    const free = useQuery({
+        queryKey: ['availability', h.warehouse_id, productIds.join(',')],
+        queryFn: () => api.get('/stock-availability', { params: { warehouse_id: h.warehouse_id, product_ids: productIds } }).then((r) => r.data.data as Record<string, { available: string; reserved: string }>),
+        enabled: editable && kind === 'order' && !!h.warehouse_id && productIds.length > 0,
+    }).data;
+
     const estimate = useMemo(() => lines.reduce((s, l) => {
         const price = l.unit_price ?? Number(products.find((p) => p.id === l.product_id)?.sale_price ?? 0);
         return s + Number(price) * Number(l.quantity || 0) - Number(l.discount || 0);
@@ -133,7 +141,12 @@ function DocEditor({ type, doc, onClose, onChanged }: { type: DocType; doc: Doc 
         setBusy(true);
         try {
             const { data } = await fn();
-            notifySuccess(msg);
+            const short = (data.data as any).stock_shortages ?? [];
+            if (short.length) {
+                notifyError(new Error(`${msg} Not enough free stock to hold for line(s) ${short.map((x: any) => `${x.line_no} (short ${qty(x.short)})`).join(', ')} — they are not reserved.`));
+            } else {
+                notifySuccess(msg);
+            }
             onChanged(data.data);
         } catch (e) {
             notifyError(e);
@@ -207,6 +220,15 @@ function DocEditor({ type, doc, onClose, onChanged }: { type: DocType; doc: Doc 
                     {!editable && <Column {...numberColumn('tax_amount')} caption="Tax" width={100} />}
                     {!editable && <Column {...numberColumn('line_total')} caption="Amount" width={120} />}
                     {!editable && kind === 'order' && <Column caption="Invoiced" width={90} calculateCellValue={(l: DocLine) => qty(l.invoiced_quantity)} />}
+                    {!editable && kind === 'order' && <Column caption="Held" width={80} calculateCellValue={(l: any) => qty(l.reserved_quantity)} />}
+                    {editable && kind === 'order' && free && (
+                        <Column caption="Free stock" width={100} allowEditing={false} cellRender={({ data }: any) => {
+                            const a = free[data.product_id];
+                            if (!a) return null;
+                            const low = Number(a.available) < Number(data.quantity || 0);
+                            return <span style={{ color: low ? 'var(--erp-danger, #c0392b)' : undefined }} title={`${qty(a.reserved)} held for other orders`}>{qty(a.available)}</span>;
+                        }} />
+                    )}
                 </DataGrid>
 
                 {editable && <Field label="Terms & conditions (printed)"><TextArea height={54} value={h.terms ?? ''} onValueChanged={(e) => set({ terms: e.value })} /></Field>}

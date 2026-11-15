@@ -51,6 +51,8 @@ final class SaleController
             'tenders.*.method' => ['required', Rule::enum(PaymentMethod::class)],
             'tenders.*.amount' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
             'tenders.*.reference' => ['nullable', 'string', 'max:120'],
+            // A sale rung up while the till was offline, sent when the connection came back.
+            'offline_sold_at' => ['nullable', 'date', 'before_or_equal:now', 'after:-3 days'],
         ]);
 
         $sale = $action->execute(
@@ -62,6 +64,7 @@ final class SaleController
             idempotencyKey: $request->header('Idempotency-Key'),
             couponCode: $data['coupon_code'] ?? null,
             priceTier: $data['price_tier'] ?? null,
+            soldAt: isset($data['offline_sold_at']) ? \Carbon\CarbonImmutable::parse($data['offline_sold_at'])->toIso8601String() : null,
         );
 
         return new JsonResponse(['data' => $sale], 201);

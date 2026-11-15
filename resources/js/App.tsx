@@ -44,6 +44,7 @@ import RentalsPage from './pages/RentalsPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import ApprovalsPage from './pages/ApprovalsPage';
 import LeavePage from './pages/LeavePage';
+import DeliveriesPage from './pages/DeliveriesPage';
 import GiftCardsPage from './pages/GiftCardsPage';
 import CurrenciesPage from './pages/CurrenciesPage';
 import StorePage from './pages/StorePage';
@@ -92,6 +93,7 @@ export default function App() {
                 <Route path="/integrations" element={<IntegrationsPage />} />
                 <Route path="/approvals" element={<ApprovalsPage />} />
                 <Route path="/leave" element={<LeavePage />} />
+                <Route path="/deliveries" element={<DeliveriesPage />} />
                 <Route path="/gift-cards" element={<GiftCardsPage />} />
                 <Route path="/currencies" element={<CurrenciesPage />} />
                 <Route path="/records/:typeKey" element={<RecordsPage />} />

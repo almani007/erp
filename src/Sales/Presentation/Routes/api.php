@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
 use Sales\Presentation\Http\Controller\CustomerController;
+use Sales\Presentation\Http\Controller\DeliveryController;
 use Sales\Presentation\Http\Controller\GiftCardController;
 use Sales\Presentation\Http\Controller\ReceivablesController;
 use Sales\Presentation\Http\Controller\SalesOrderController;
@@ -58,6 +59,17 @@ Route::middleware(['auth:sanctum', 'module:sales'])->group(function (): void {
     Route::get('receivables/aging', [ReceivablesController::class, 'aging'])->middleware($ar);
     Route::get('customers/{customerId}/open-invoices', [ReceivablesController::class, 'openInvoices'])->middleware('permission:sales.receivable.view|sales.payment.receive');
     Route::get('customers/{customerId}/statement', [ReceivablesController::class, 'statement'])->middleware($ar);
+
+    // Deliveries: challans for invoices, drivers, proof of delivery, cash on delivery.
+    $dlv = 'permission:sales.delivery.manage';
+    Route::get('deliveries', [DeliveryController::class, 'index'])->middleware($dlv);
+    Route::get('deliveries/for-invoice/{saleNo}', [DeliveryController::class, 'deliverable'])->middleware($dlv);
+    Route::get('deliveries/{id}', [DeliveryController::class, 'show'])->middleware($dlv);
+    Route::post('deliveries', [DeliveryController::class, 'store'])->middleware($dlv);
+    Route::post('deliveries/{id}/dispatch', [DeliveryController::class, 'dispatch'])->middleware($dlv);
+    Route::post('deliveries/{id}/deliver', [DeliveryController::class, 'deliver'])->middleware([$dlv, 'idempotent']);
+    Route::post('deliveries/{id}/fail', [DeliveryController::class, 'fail'])->middleware($dlv);
+    Route::post('deliveries/{id}/cancel', [DeliveryController::class, 'cancel'])->middleware($dlv);
 
     // Gift cards and vouchers.
     Route::get('gift-cards', [GiftCardController::class, 'index'])->middleware('permission:sales.giftcard.manage');

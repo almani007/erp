@@ -40,6 +40,7 @@ const NAV: { section: string; links: NavLink[] }[] = [
             { text: 'Quotations & orders', icon: 'textdocument', path: '/sales-documents', permission: 'sales.order.view', module: 'sales' },
             { text: 'Receivables', icon: 'money', path: '/receivables', permission: 'sales.receivable.view', module: 'sales' },
             { text: 'Customers', icon: 'group', path: '/customers', permission: 'sales.customer.view', module: 'sales' },
+            { text: 'Deliveries', icon: 'car', path: '/deliveries', permission: 'sales.delivery.manage', module: 'sales' },
             { text: 'Gift cards & vouchers', icon: 'card', path: '/gift-cards', permission: 'sales.giftcard.manage', module: 'sales' },
             { text: 'Price checker', icon: 'search', path: '/price-checker', permission: 'catalog.product.view', module: 'catalog' },
             { text: 'Serial & warranty', icon: 'tags', path: '/serials', permission: 'sales.sale.view', feature: 'serials', module: 'sales' },

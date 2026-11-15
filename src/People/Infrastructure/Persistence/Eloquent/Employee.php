@@ -15,7 +15,7 @@ final class Employee extends Model
 
     protected $table = 'employees';
 
-    protected $fillable = ['company_id', 'branch_id', 'code', 'name', 'father_name', 'cnic', 'phone', 'email', 'address', 'department', 'designation', 'join_date', 'leave_date', 'pay_type', 'basic_salary', 'allowances', 'deductions', 'monthly_tax', 'annual_leave_days', 'bank_name', 'bank_account', 'user_id', 'status', 'custom'];
+    protected $fillable = ['company_id', 'branch_id', 'code', 'name', 'father_name', 'cnic', 'phone', 'email', 'address', 'department', 'designation', 'join_date', 'leave_date', 'pay_type', 'basic_salary', 'allowances', 'deductions', 'monthly_tax', 'tax_method', 'annual_leave_days', 'bank_name', 'bank_account', 'user_id', 'status', 'custom'];
 
     protected function casts(): array
     {

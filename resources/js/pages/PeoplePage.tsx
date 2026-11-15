@@ -19,7 +19,7 @@ interface Employee {
     id: string; company_id: string; branch_id: string | null; code: string; name: string; father_name: string | null; cnic: string | null;
     phone: string | null; email: string | null; address: string | null; department: string | null; designation: string | null;
     join_date: string; leave_date: string | null; pay_type: 'monthly' | 'daily'; basic_salary: string; allowances: Named[] | null;
-    deductions: Named[] | null; monthly_tax: string; annual_leave_days: string; bank_name: string | null; bank_account: string | null; status: string;
+    deductions: Named[] | null; monthly_tax: string; tax_method?: string; annual_leave_days: string; bank_name: string | null; bank_account: string | null; status: string;
 }
 interface Line {
     id: string; employee_id: string; employee: { code: string; name: string; designation: string | null; bank_name: string | null; bank_account: string | null };
@@ -43,6 +43,7 @@ export default function PeoplePage() {
                 {can('people.attendance.manage') && <Item title="Attendance"><AttendanceSheet /></Item>}
                 {can('people.payroll.manage') && <Item title="Payroll"><Payroll /></Item>}
                 {can('people.payroll.manage') && <Item title="Advances & loans"><Advances /></Item>}
+                {can('people.payroll.manage') && <Item title="Tax slabs"><TaxSlabs /></Item>}
             </TabPanel>
         </Page>
     );
@@ -145,9 +146,15 @@ function EmployeeEditor({ value, onClose, onSaved }: { value: Employee | null; o
                 <Field label={e.pay_type === 'daily' ? 'Daily rate' : 'Basic salary (month)'}>
                     <NumberBox value={Number(e.basic_salary ?? 0)} min={0} format="#,##0.00" onValueChanged={(v) => set({ basic_salary: String(v.value ?? 0) })} />
                 </Field>
-                <Field label="Monthly tax withheld">
-                    <NumberBox value={Number(e.monthly_tax ?? 0)} min={0} format="#,##0.00" onValueChanged={(v) => set({ monthly_tax: String(v.value ?? 0) })} />
+                <Field label="Income tax">
+                    <SelectBox value={e.tax_method ?? 'fixed'} valueExpr="id" displayExpr="n" onValueChanged={(v) => set({ tax_method: v.value })}
+                        dataSource={[{ id: 'slabs', n: 'From tax slabs (automatic)' }, { id: 'fixed', n: 'Fixed monthly amount' }, { id: 'none', n: 'Not taxed' }]} />
                 </Field>
+                {(e.tax_method ?? 'fixed') === 'fixed' && (
+                    <Field label="Monthly tax withheld">
+                        <NumberBox value={Number(e.monthly_tax ?? 0)} min={0} format="#,##0.00" onValueChanged={(v) => set({ monthly_tax: String(v.value ?? 0) })} />
+                    </Field>
+                )}
                 <Field label="Annual leave days">
                     <NumberBox value={Number(e.annual_leave_days ?? 0)} min={0} onValueChanged={(v) => set({ annual_leave_days: String(v.value ?? 0) })} />
                 </Field>
@@ -428,3 +435,61 @@ function Advances() {
         </div>
     );
 }
+
+/** Salary tax slabs used for employees taxed "from tax slabs", plus a quick calculator. */
+function TaxSlabs() {
+    const client = useQueryClient();
+    const rules = useQuery({ queryKey: ['tax-slabs'], queryFn: () => api.get('/payroll/tax-slabs').then((r) => r.data.data) });
+    const [draft, setDraft] = useState<any | null>(null);
+    const [monthly, setMonthly] = useState<number>(150000);
+    const [result, setResult] = useState<any | null>(null);
+    useEffect(() => { if (rules.data && !draft) setDraft({ ...rules.data, slabs: rules.data.slabs.map((x: any) => ({ ...x })) }); }, [rules.data, draft]);
+    const editable = can('people.payroll.approve');
+
+    const save = async () => {
+        try {
+            await api.put('/payroll/tax-slabs', { ...draft, slabs: draft.slabs.map((x: any) => ({ ...x, to: x.to === '' ? null : x.to })) });
+            notifySuccess('Tax slabs saved. Next payroll uses them.');
+            setDraft(null);
+            client.invalidateQueries({ queryKey: ['tax-slabs'] });
+        } catch (e) { notifyError(e); }
+    };
+    const calc = async () => {
+        try { setResult((await api.post('/payroll/tax-calculator', { annual_income: monthly * 12 })).data.data); } catch (e) { notifyError(e); }
+    };
+
+    if (!draft) return null;
+    return (
+        <>
+            <div className="erp-card">
+                <div className="erp-card-title">Salary tax slabs (yearly income)</div>
+                <div className="erp-muted">Defaults are Pakistan's salaried slabs for tax year 2025-26. Each year's Finance Act changes them — check and update them every July.</div>
+                <DataGrid dataSource={draft.slabs} showRowLines columnAutoWidth repaintChangesOnly
+                    onRowUpdated={() => setDraft({ ...draft })} onRowInserted={() => setDraft({ ...draft })} onRowRemoved={() => setDraft({ ...draft })}>
+                    <Editing mode="cell" allowUpdating={editable} allowAdding={editable} allowDeleting={editable} newRowPosition="last" />
+                    <Column dataField="from" caption="Income above" dataType="number" format="#,##0" />
+                    <Column dataField="to" caption="Up to (empty = no limit)" dataType="number" format="#,##0" />
+                    <Column dataField="fixed" caption="Fixed tax" dataType="number" format="#,##0" />
+                    <Column dataField="rate" caption="Rate % on the part above" dataType="number" />
+                </DataGrid>
+                <div className="erp-row" style={{ marginTop: 12 }}>
+                    <Field label="Tax year starts (month)"><NumberBox width={120} min={1} max={12} value={Number(draft.year_start_month)} readOnly={!editable} onValueChanged={(v) => setDraft({ ...draft, year_start_month: v.value })} /></Field>
+                    <Field label="Surcharge above income"><NumberBox width={160} min={0} format="#,##0" value={Number(draft.surcharge_threshold)} readOnly={!editable} onValueChanged={(v) => setDraft({ ...draft, surcharge_threshold: v.value })} /></Field>
+                    <Field label="Surcharge % of tax"><NumberBox width={110} min={0} max={100} value={Number(draft.surcharge_rate)} readOnly={!editable} onValueChanged={(v) => setDraft({ ...draft, surcharge_rate: v.value })} /></Field>
+                    {editable && <Button text="Save slabs" type="default" icon="save" onClick={save} />}
+                    {editable && <Button text="Restore defaults" stylingMode="text" onClick={() => setDraft({ ...draft, slabs: rules.data.defaults.map((x: any) => ({ ...x })) })} />}
+                </div>
+            </div>
+            <div className="erp-card">
+                <div className="erp-card-title">Check a salary</div>
+                <div className="erp-row">
+                    <Field label="Monthly taxable salary"><NumberBox width={180} min={0} format="#,##0" value={monthly} onValueChanged={(v) => setMonthly(v.value ?? 0)} /></Field>
+                    <Button text="Calculate" onClick={calc} />
+                    {result && <span>Yearly tax <b>{money(result.annual_tax)}</b> · monthly <b>{money(result.monthly_tax)}</b> · effective {result.effective_rate}%</span>}
+                </div>
+                <div className="erp-muted">Payroll spreads the year's tax over the months left, so raises and bonuses are evened out by June.</div>
+            </div>
+        </>
+    );
+}
+

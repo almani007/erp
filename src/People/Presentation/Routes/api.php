@@ -7,6 +7,7 @@ use People\Presentation\Http\Controller\AdvanceController;
 use People\Presentation\Http\Controller\AttendanceController;
 use People\Presentation\Http\Controller\EmployeeController;
 use People\Presentation\Http\Controller\LeaveController;
+use People\Presentation\Http\Controller\TaxSlabController;
 use People\Presentation\Http\Controller\PayrollController;
 
 Route::middleware(['auth:sanctum', 'module:people'])->group(function (): void {
@@ -34,6 +35,9 @@ Route::middleware(['auth:sanctum', 'module:people'])->group(function (): void {
     Route::post('payroll-runs/{runId}/approve', [PayrollController::class, 'approve'])->middleware('permission:people.payroll.approve');
     Route::post('payroll-runs/{runId}/pay', [PayrollController::class, 'pay'])->middleware(['permission:people.payroll.approve', 'idempotent']);
     Route::post('payroll-runs/{runId}/cancel', [PayrollController::class, 'cancel'])->middleware($payroll);
+    Route::get('payroll/tax-slabs', [TaxSlabController::class, 'show'])->middleware($payroll);
+    Route::put('payroll/tax-slabs', [TaxSlabController::class, 'update'])->middleware('permission:people.payroll.approve');
+    Route::post('payroll/tax-calculator', [TaxSlabController::class, 'calculate'])->middleware($payroll);
 
     // Leave: staff request their own; managers request for others, approve, and set up types and holidays.
     $leaveSetup = 'permission:people.leave.manage';

@@ -21,12 +21,13 @@ use Shared\Domain\Support\Decimal;
  * Overtime: hourly rate × hours × the overtime-rate setting.
  *
  * The rules are settings (group `payroll`): month_days, hours_per_day,
- * overtime_rate. Tax is the employee's monthly withholding as entered —
- * the employer's tax computation, not this system's.
+ * overtime_rate. Tax follows the employee's tax method: the monthly
+ * amount as entered (fixed), worked out from the tax slabs (slabs — see
+ * IncomeTax), or none. An amount typed on the payroll line always wins.
  */
 final class PayrollCalculator
 {
-    public function __construct(private readonly Settings $settings) {}
+    public function __construct(private readonly Settings $settings, private readonly IncomeTax $incomeTax) {}
 
     /**
      * @param  array{absent_days?: string|null, overtime_hours?: string|null, bonus?: string|null, other_deduction?: string|null, tax?: string|null, advance_recovery?: string|null}  $overrides
@@ -61,7 +62,7 @@ final class PayrollCalculator
         $overtimeHours = self::val($overrides['overtime_hours'] ?? null) ?? $overtimeFromRegister;
         $bonus = self::val($overrides['bonus'] ?? null) ?? '0';
         $other = self::val($overrides['other_deduction'] ?? null) ?? '0';
-        $tax = self::val($overrides['tax'] ?? null) ?? (string) $employee->monthly_tax;
+        $taxOverride = self::val($overrides['tax'] ?? null);
 
         $allowanceList = self::named($employee->allowances);
         $deductionList = self::named($employee->deductions);
@@ -92,6 +93,11 @@ final class PayrollCalculator
 
         $overtime = Decimal::round(Decimal::mul(Decimal::mul($hourly, $overtimeHours, 6), $overtimeRate, 6), 2);
         $gross = Decimal::sub(Decimal::add(Decimal::add(Decimal::add($basic, $allowances, 2), $overtime, 2), $bonus, 2), $absenceDeduction, 2);
+        $tax = $taxOverride ?? match ($employee->tax_method ?? 'fixed') {
+            'none' => '0',
+            'slabs' => Decimal::isPositive($gross) ? $this->incomeTax->monthly($employee, $start, $gross) : '0',
+            default => (string) $employee->monthly_tax,
+        };
         $beforeAdvances = Decimal::sub(Decimal::sub(Decimal::sub($gross, $fixedDeductions, 2), $tax, 2), $other, 2);
 
         // Advances are recovered oldest first, never taking pay below zero.

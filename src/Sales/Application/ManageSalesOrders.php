@@ -7,6 +7,7 @@ namespace Sales\Application;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Inventory\Application\StockReservations;
 use Organization\Infrastructure\Persistence\Eloquent\Warehouse;
 use Sales\Domain\SaleOrigin;
 use Sales\Infrastructure\Persistence\Eloquent\Sale;
@@ -14,6 +15,7 @@ use Sales\Infrastructure\Persistence\Eloquent\SalesOrder;
 use Sales\Infrastructure\Persistence\Eloquent\SalesOrderLine;
 use Shared\Domain\Contract\AuditTrail;
 use Shared\Domain\Contract\DocumentNumbers;
+use Shared\Domain\Contract\Settings;
 use Shared\Domain\Contract\TenantContext;
 use Shared\Domain\Support\Decimal;
 
@@ -36,6 +38,8 @@ final class ManageSalesOrders
         private readonly TenantContext $tenant,
         private readonly AuditTrail $audit,
         private readonly AuthFactory $auth,
+        private readonly StockReservations $reservations,
+        private readonly Settings $settings,
     ) {}
 
     /**
@@ -97,6 +101,7 @@ final class ManageSalesOrders
                 ]);
             } else {
                 $doc = $existing;
+                $this->releaseAll($doc); // the old lines' stock goes back before the new lines take theirs
                 $doc->update($header);
                 $doc->lines()->delete();
             }
@@ -116,8 +121,9 @@ final class ManageSalesOrders
             }
 
             $this->audit->record("sales.{$doc->doc_type}.saved", 'sales_order', $doc->id, null, ['doc_no' => $doc->doc_no, 'total' => $doc->grand_total]);
+            $shortages = $doc->doc_type === SalesOrder::ORDER ? $this->reserveFor($doc->refresh()) : [];
 
-            return $this->present($doc);
+            return $this->present($doc)->setAttribute('stock_shortages', $shortages);
         });
     }
 
@@ -164,8 +170,9 @@ final class ManageSalesOrders
 
             $quote->update(['status' => 'converted']);
             $this->audit->record('sales.quotation.converted', 'sales_order', $quote->id, null, ['doc_no' => $quote->doc_no, 'order_no' => $order->doc_no]);
+            $shortages = $this->reserveFor($order->refresh());
 
-            return $this->present($order);
+            return $this->present($order)->setAttribute('stock_shortages', $shortages);
         });
     }
 
@@ -176,6 +183,7 @@ final class ManageSalesOrders
             if ($order->status !== 'open') {
                 throw new \DomainException("Order {$order->doc_no} is {$order->status}; only an order with nothing invoiced can be cancelled.");
             }
+            $this->releaseAll($order);
             $order->update(['status' => 'cancelled']);
             $this->audit->record('sales.order.cancelled', 'sales_order', $order->id, null, ['doc_no' => $order->doc_no]);
 
@@ -225,6 +233,15 @@ final class ManageSalesOrders
                 throw new \DomainException('Nothing to invoice: enter a quantity on at least one line.');
             }
 
+            // The order's own reserved stock is freed for its invoice.
+            foreach ($taken as [$line, $qty]) {
+                $free = Decimal::cmp($qty, (string) $line->reserved_quantity) > 0 ? (string) $line->reserved_quantity : $qty;
+                if (Decimal::isPositive($free)) {
+                    $this->reservations->release($order->warehouse_id, $line->product_id, $free);
+                    $line->update(['reserved_quantity' => Decimal::sub((string) $line->reserved_quantity, $free, Decimal::QTY_SCALE)]);
+                }
+            }
+
             $dueDate = today()->addDays((int) $order->payment_days)->toDateString();
             $sale = $this->recordSale->invoice(
                 new SaleOrigin(
@@ -266,6 +283,50 @@ final class ManageSalesOrders
         }
 
         $this->refreshStatus($order->refresh());
+        if (in_array($order->status, ['open', 'partly_invoiced'], true)) {
+            $this->reserveFor($order); // goods back on the order are held for it again
+        }
+    }
+
+    /**
+     * Reserves what each open line still needs. Returns the lines that could not be fully covered.
+     *
+     * @return list<array{line_no: int, product_id: string, needed: string, reserved: string, short: string}>
+     */
+    public function reserveFor(SalesOrder $order): array
+    {
+        if ($order->doc_type !== SalesOrder::ORDER || ! in_array($order->status, ['open', 'partly_invoiced'], true)
+            || $this->settings->get('sales', 'reserve_stock_for_orders', $order->company_id) === false) {
+            return [];
+        }
+
+        $short = [];
+        foreach ($order->lines()->get() as $line) {
+            $open = Decimal::sub((string) $line->quantity, (string) $line->invoiced_quantity, Decimal::QTY_SCALE);
+            $want = Decimal::sub($open, (string) $line->reserved_quantity, Decimal::QTY_SCALE);
+            if (Decimal::isPositive($want)) {
+                $got = $this->reservations->reserve($order->warehouse_id, $line->product_id, $want);
+                if (Decimal::isPositive($got)) {
+                    $line->update(['reserved_quantity' => Decimal::add((string) $line->reserved_quantity, $got, Decimal::QTY_SCALE)]);
+                }
+                $isStock = DB::table('products')->where('id', $line->product_id)->value('product_type') === 'goods';
+                if ($isStock && Decimal::cmp($got, $want) < 0) {
+                    $short[] = ['line_no' => (int) $line->line_no, 'product_id' => $line->product_id, 'needed' => $want, 'reserved' => $got, 'short' => Decimal::sub($want, $got, Decimal::QTY_SCALE)];
+                }
+            }
+        }
+
+        return $short;
+    }
+
+    private function releaseAll(SalesOrder $order): void
+    {
+        foreach ($order->lines()->get() as $line) {
+            if (Decimal::isPositive((string) $line->reserved_quantity)) {
+                $this->reservations->release($order->warehouse_id, $line->product_id, (string) $line->reserved_quantity);
+                $line->update(['reserved_quantity' => '0']);
+            }
+        }
     }
 
     private function refreshStatus(SalesOrder $order): void

@@ -41,6 +41,34 @@ final class StockController
         return new JsonResponse(['data' => $rows]);
     }
 
+    /** Free stock per product in a warehouse: on hand, held for sales orders, available. */
+    public function availability(Request $request, \Inventory\Application\StockReservations $reservations): JsonResponse
+    {
+        $q = $request->validate([
+            'warehouse_id' => ['required', 'uuid', \Shared\Infrastructure\Validation\TenantRule::exists('warehouses')],
+            'product_ids' => ['required', 'array', 'max:500'],
+            'product_ids.*' => ['uuid'],
+        ]);
+
+        return new JsonResponse(['data' => $reservations->availability($q['warehouse_id'], array_values($q['product_ids']))]);
+    }
+
+    /** Which open sales orders hold a product's stock. */
+    public function reservations(Request $request): JsonResponse
+    {
+        $q = $request->validate(['product_id' => ['required', 'uuid'], 'warehouse_id' => ['nullable', 'uuid']]);
+
+        $rows = DB::table('sales_order_lines as l')->join('sales_orders as o', 'o.id', '=', 'l.sales_order_id')
+            ->join('customers as c', 'c.id', '=', 'o.customer_id')
+            ->where('o.tenant_id', app(TenantContext::class)->requireId())
+            ->where('l.product_id', $q['product_id'])->where('l.reserved_quantity', '>', 0)
+            ->when($q['warehouse_id'] ?? null, fn (Builder $b, $w) => $b->where('o.warehouse_id', $w))
+            ->orderBy('o.delivery_date')->orderBy('o.doc_no')
+            ->get(['o.id', 'o.doc_no', 'o.doc_date', 'o.delivery_date', 'o.status', 'c.name as customer', 'l.quantity', 'l.invoiced_quantity', 'l.reserved_quantity']);
+
+        return new JsonResponse(['data' => $rows]);
+    }
+
     public function movements(Request $request, TenantContext $tenant, BranchContext $branches): JsonResponse
     {
         $q = $request->validate([

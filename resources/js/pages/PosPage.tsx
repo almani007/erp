@@ -6,6 +6,7 @@ import NumberBox from 'devextreme-react/number-box';
 import Popup from 'devextreme-react/popup';
 import SelectBox from 'devextreme-react/select-box';
 import TextBox from 'devextreme-react/text-box';
+import { discardQueued, isNetworkError, queuedSales, queueSale, retryQueued, useOfflineQueue } from '../lib/offlineSales';
 import { api, errorMessage, getList, getOne, idempotent, newIdempotencyKey, notifyError, notifySuccess } from '../lib/api';
 import { money, qty } from '../lib/format';
 import { useAppConfig } from '../lib/config';
@@ -58,6 +59,22 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Lines as the API expects them: price and discount only when the cashier set them. */
 const splitSerials = (text?: string) => (text ?? '').split(/[\s,;]+/).map((v) => v.trim()).filter(Boolean);
+
+/** Offline only: an estimate from the cached price list (list price + product tax), since deals and tiers need the server. */
+function estimateOffline(cart: CartLine[], products: any[]) {
+    let net = 0;
+    let tax = 0;
+    for (const line of cart) {
+        const p = products.find((x) => x.id === line.product_id);
+        const factor = Number(line.packs.find((u) => u.id === line.unit_id)?.factor ?? 1);
+        const price = line.unit_price !== undefined ? Number(line.unit_price) : Number(p?.sale_price ?? 0) * factor;
+        const lineNet = price * line.quantity - Number(line.discount ?? 0);
+        net += lineNet;
+        tax += lineNet * Number(p?.tax_code?.rate ?? 0) / 100;
+    }
+    const round = (n: number) => Math.round(n * 100) / 100;
+    return { offline: true, subtotal: round(net), tax_total: round(tax), discount_total: 0, grand_total: round(net + tax), lines: [] };
+}
 
 const toLines = (cart: CartLine[]) => cart.map(({ product_id, unit_id, quantity, unit_price, discount, track_serial, serials }) => ({
     product_id,
@@ -126,6 +143,7 @@ function OpenShift({ onOpened, onBack }: { onOpened: () => void; onBack: () => v
 
 function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChanged: () => void; onBack: () => void }) {
     const canOverride = useCan('sales.price.override');
+    const canVoid = useCan('sales.sale.void');
     const heldKey = `erp-pos-held-${shift.terminal_id}`;
     const products = useQuery({ queryKey: ['products', 'active'], queryFn: () => getList('/products', { status: 'active', limit: 1000 }) });
     const categories = useQuery({ queryKey: ['categories'], queryFn: () => getList('/categories') });
@@ -179,7 +197,12 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
                     }
                 })
                 .catch((e) => {
-                    if (seq === quoteSeq.current) {
+                    if (seq !== quoteSeq.current) return;
+                    if (isNetworkError(e)) {
+                        // No connection: keep selling with an estimate; the sale is sent later.
+                        setQuote(estimateOffline(cart, products.data ?? []));
+                        setQuoteError(null);
+                    } else {
                         setQuoteError(errorMessage(e));
                     }
                 });
@@ -298,6 +321,8 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
     // The server returns priced lines in cart order.
     const quoted = (index: number) => (quote?.lines?.length === cart.length ? quote.lines[index] : undefined);
     const customer = (customers.data ?? []).find((c: any) => c.id === customerId);
+    const queue = useOfflineQueue();
+    const [showQueue, setShowQueue] = useState(false);
     const grandTotal = Number(quote?.grand_total ?? 0);
 
     return (
@@ -312,6 +337,10 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
                             inputAttr={{ autoFocus: true, 'aria-label': 'Barcode or SKU' }}
                         />
                     </div>
+                    {(!queue.online || queue.all.length > 0) && (
+                        <Button stylingMode="outlined" type={queue.attention.length ? 'danger' : 'normal'} onClick={() => setShowQueue(true)}
+                            text={!queue.online ? `Offline${queue.waiting.length ? ` · ${queue.waiting.length} to send` : ''}` : queue.attention.length ? `${queue.attention.length} need attention` : `Sending ${queue.waiting.length}…`} />
+                    )}
                     <div style={{ width: 240 }}>
                         <TextBox placeholder="Filter products…" value={search} valueChangeEvent="input" mode="search" stylingMode="outlined" onValueChanged={(e) => setSearch(e.value)} />
                     </div>
@@ -418,6 +447,7 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
                     <div className="pos-total-row"><span>Subtotal</span><span>{money(quote?.subtotal)}</span></div>
                     <div className="pos-total-row"><span>Discount{quote?.coupon ? ` (${quote.coupon})` : ''}</span><span>−{money(quote?.discount_total)}</span></div>
                     <div className="pos-total-row"><span>Tax</span><span>{money(quote?.tax_total)}</span></div>
+                    {quote?.offline && <div className="pos-total-row erp-error"><span>Offline estimate — deals and coupons apply when sent</span></div>}
                     <div className="pos-total-row grand"><span>Total</span><span>{money(grandTotal)}</span></div>
                     {quoteError && <div className="erp-error" role="alert">{quoteError}</div>}
                 </div>
@@ -436,13 +466,27 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
                     cart={cart} total={grandTotal} customerId={customerId} coupon={coupon} wholesale={wholesale}
                     points={Number(customer?.loyalty_points ?? 0)} pointValue={config?.loyalty.enabled ? Number(config.loyalty.point_value) : 0}
                     onClose={() => setDialog(null)}
+                    offline={!!quote?.offline}
                     onDone={(sale) => {
                         setDialog(null);
                         clear();
-                        setReceipt(sale);
+                        if (sale) setReceipt(sale);
                         onShiftChanged();
                     }}
                 />
+            )}
+            {showQueue && (
+                <Popup visible title="Sales saved on this till" width={620} height="auto" onHiding={() => setShowQueue(false)} showCloseButton>
+                    <div className="erp-muted">{queue.online ? 'Connected.' : 'No connection.'} Sales are sent automatically, oldest first, with the time they were rung up.</div>
+                    {queue.all.length === 0 && <div>Nothing waiting.</div>}
+                    {queue.all.map((q) => (
+                        <div key={q.key} className="erp-row" style={{ borderBottom: '1px solid #eee', padding: '6px 0' }}>
+                            <span style={{ flex: 1 }}>{new Date(q.created_at).toLocaleString()} · {money(q.estimate)} {q.error ? <span className="erp-error"> — {q.error}</span> : ' — waiting'}</span>
+                            {q.error && <Button text="Try again" stylingMode="text" onClick={() => retryQueued(q.key)} />}
+                            {q.error && canVoid && <Button text="Discard" type="danger" stylingMode="text" onClick={() => { if (window.confirm('Discard this sale? It will not be recorded. Enter it again by hand if the goods were sold.')) discardQueued(q.key); }} />}
+                        </div>
+                    ))}
+                </Popup>
             )}
             {dialog === 'close' && <CloseShift shift={shift} onClose={() => setDialog(null)} onClosed={() => { setDialog(null); onShiftChanged(); }} />}
             {dialog === 'cash' && <CashMovement onClose={() => setDialog(null)} onDone={() => { setDialog(null); onShiftChanged(); }} />}
@@ -469,11 +513,11 @@ function Terminal({ shift, onShiftChanged, onBack }: { shift: any; onShiftChange
     );
 }
 
-function Payment({ cart, total, customerId, coupon, wholesale, points, pointValue, onClose, onDone }: {
+function Payment({ cart, total, customerId, coupon, wholesale, points, pointValue, onClose, onDone, offline }: {
     cart: CartLine[]; total: number; customerId: string | null; coupon: string; wholesale: boolean;
     /** The customer's loyalty points and what one point is worth (0 = loyalty off). */
     points: number; pointValue: number;
-    onClose: () => void; onDone: (sale: any) => void;
+    onClose: () => void; onDone: (sale: any) => void; offline?: boolean;
 }) {
     const pointsWorth = round2(points * pointValue);
     const methods = pointsWorth > 0 ? [...METHODS, { id: 'loyalty', name: `Loyalty points (${points} = ${money(pointsWorth)})` }] : METHODS;
@@ -522,13 +566,21 @@ function Payment({ cart, total, customerId, coupon, wholesale, points, pointValu
 
     const complete = async () => {
         setBusy(true);
+        const body = { customer_id: customerId, coupon_code: coupon.trim() || null, price_tier: wholesale ? 'wholesale' : null, lines: toLines(cart), tenders };
         try {
-            const { data } = await api.post('/sales', {
-                customer_id: customerId, coupon_code: coupon.trim() || null, price_tier: wholesale ? 'wholesale' : null, lines: toLines(cart), tenders,
-            }, idempotent(key.current));
+            const { data } = await api.post('/sales', body, idempotent(key.current));
             onDone(data.data);
         } catch (e) {
-            notifyError(e);
+            if (isNetworkError(e) && tenders.every((t) => t.method === 'cash')) {
+                // Same key: if the request did reach the server, sending it again changes nothing.
+                queueSale(key.current, body, total);
+                notifySuccess('No connection — the sale is saved on this till and will be sent automatically.');
+                onDone(null);
+            } else if (isNetworkError(e)) {
+                notifyError(new Error('No connection. Only cash sales can be taken offline.'));
+            } else {
+                notifyError(e);
+            }
         } finally {
             setBusy(false);
         }
@@ -536,6 +588,7 @@ function Payment({ cart, total, customerId, coupon, wholesale, points, pointValu
 
     return (
         <Popup visible title={`Payment — ${money(total)}`} width={580} height="auto" onHiding={onClose} showCloseButton>
+            {offline && <div className="erp-error">Offline: cash only. The total is an estimate from list prices; the sale is sent and priced by the server when the connection returns.</div>}
             {tenders.length === 0 && (
                 <div className="erp-row">
                     {quickCash.map((value) => (
@@ -695,6 +748,10 @@ function CloseShift({ shift, onClose, onClosed }: { shift: any; onClose: () => v
     const variance = round2(counted - Number(s.expected_cash));
 
     const close = async () => {
+        if (queuedSales().length > 0) {
+            notifyError(new Error('Some offline sales have not reached the server yet. Send them (or deal with the ones needing attention) before closing the shift.'));
+            return;
+        }
         setBusy(true);
         try {
             const { data } = await api.post('/pos/shifts/current/close', { counted_cash: counted, notes: notes || null });

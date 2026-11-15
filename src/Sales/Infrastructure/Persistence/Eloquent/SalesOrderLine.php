@@ -18,7 +18,7 @@ final class SalesOrderLine extends Model
     protected $table = 'sales_order_lines';
 
     protected $fillable = [
-        'sales_order_id', 'line_no', 'product_id', 'description', 'quantity', 'unit_price', 'discount', 'tax_amount', 'line_total', 'invoiced_quantity',
+        'sales_order_id', 'line_no', 'product_id', 'description', 'quantity', 'unit_price', 'discount', 'tax_amount', 'line_total', 'invoiced_quantity', 'reserved_quantity',
     ];
 
     /** @return BelongsTo<Product, $this> */
